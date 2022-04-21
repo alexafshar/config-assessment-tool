@@ -2,9 +2,7 @@ name: Create Platform specific bundles
 on:
   release:
     types: [ published ]
-
-on:
-    workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
 
