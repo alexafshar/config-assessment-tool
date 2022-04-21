@@ -23,6 +23,7 @@ jobs:
          pipenv install --dev --system
      - name: Create platform specific tarball/zip bundle using the spec file
        run: |
+        echo "Glibc Version installed: $(ldd --version)"
         pyinstaller --distpath=./dist/appdynamics backend/config-assessment-tool.spec
         cd dist
         tar -zcvf $(echo appdynamics/config*).tgz $(echo appdynamics/config*)
