@@ -2,7 +2,10 @@
 name: My workflow
 
 on:
-  pull_request:
+  push:
+    branches:
+        - development
+
   workflow_dispatch: {}
 
 
