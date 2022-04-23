@@ -83,7 +83,7 @@ jobs:
     - name: Save bundle as artifact
       uses: actions/upload-artifact@v3
       with:
-        name: dist/${{ steps.install_it.outputs.bundle_name }}
+        name: ${{ steps.install_it.outputs.bundle_name }}
         path: dist/*
 
   build-macosx:
