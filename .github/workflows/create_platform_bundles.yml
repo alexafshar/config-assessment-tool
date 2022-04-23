@@ -23,12 +23,14 @@ jobs:
          # install to global namespace and then clean up, no need for venv setup
          pipenv install --dev --system
      - name: Create platform specific tarball/zip bundle using the spec file
+       id: bundle_it
        run: |
         echo "Glibc Version installed: $(ldd --version)"
         pyinstaller --distpath=./dist/appdynamics backend/config-assessment-tool.spec
         cd dist
         tar -zcvf $(echo appdynamics/config*).tgz $(echo appdynamics/config*)
-        echo "::set-env name=bundleFileName::$(ls *.tgz)"
+        $bundleFileName = $(ls *.tgz)
+        echo "::set-output name=bundle_name::$bundleFileName"
      - name: Release the bundle for linux
        uses: softprops/action-gh-release@v1
        if: startsWith(github.ref, 'refs/tags/')
@@ -38,7 +40,7 @@ jobs:
      - name: Save bundle as artifact
        uses: actions/upload-artifact@v3
        with:
-         name: echo $bundleFileName
+         name: ${{ steps.bundle_it.outputs.bundle_name }}
          path: dist/appdynamics/*.tgz
 
   build-win:
