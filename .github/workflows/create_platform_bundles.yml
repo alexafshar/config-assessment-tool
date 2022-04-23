@@ -80,6 +80,11 @@ jobs:
       with:
         files: dist/${{ steps.install_it.outputs.bundle_name }}
         token: ${{ secrets.WORKFLOW_TOKEN }}
+    - name: Save bundle as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist/${{ steps.install_it.outputs.bundle_name }}
+        path: dist/appdynamics/*.zip
 
   build-macosx:
    name: build macosx binary
