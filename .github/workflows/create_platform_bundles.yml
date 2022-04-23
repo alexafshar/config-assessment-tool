@@ -37,6 +37,7 @@ jobs:
      - name: Save bundle as artifact
        uses: actions/upload-artifact@v3
        with:
+         name: echo $(ls *.tgz)
          path: dist/appdynamics/*.tgz
 
   build-win:
