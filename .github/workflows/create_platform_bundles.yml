@@ -31,8 +31,7 @@ jobs:
         file=$(echo appdynamics/config*).tgz
         tar -zcvf "$file" $(echo appdynamics/config*)
         echo "Here is the generated file $file"
-        $bundleFileName = echo "$file"
-        echo "::set-output name=bundle_name::$bundleFileName"
+        echo "::set-output name=bundle_name::$file"
      - name: Release the bundle for linux
        uses: softprops/action-gh-release@v1
        if: startsWith(github.ref, 'refs/tags/')
