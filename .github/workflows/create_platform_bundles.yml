@@ -84,7 +84,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: ${{ steps.install_it.outputs.bundle_name }}
-        path: dist/*
+        path: dist/${{ steps.install_it.outputs.bundle_name }}
 
   build-macosx:
    name: build macosx binary
