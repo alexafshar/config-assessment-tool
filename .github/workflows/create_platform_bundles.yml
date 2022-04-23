@@ -30,7 +30,7 @@ jobs:
         cd dist
         tar -zcvf $(echo appdynamics/config*).tgz $(echo appdynamics/config*)
         echo "Here is the generated file"
-        echo $(ls *.tgz)
+        ls *
         $bundleFileName = echo $(ls *.tgz)
         echo "::set-output name=bundle_name::$bundleFileName"
      - name: Release the bundle for linux
