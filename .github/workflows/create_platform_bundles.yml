@@ -84,7 +84,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: dist/${{ steps.install_it.outputs.bundle_name }}
-        path: dist/appdynamics/*.zip
+        path: dist/*
 
   build-macosx:
    name: build macosx binary
