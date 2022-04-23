@@ -28,10 +28,10 @@ jobs:
         echo "Glibc Version installed: $(ldd --version)"
         pyinstaller --distpath=./dist/appdynamics backend/config-assessment-tool.spec
         cd dist
-        tar -zcvf $(echo appdynamics/config*).tgz $(echo appdynamics/config*)
-        echo "Here is the generated file"
-        ls *
-        $bundleFileName = echo $(ls *.tgz)
+        file=$(echo appdynamics/config*).tgz
+        tar -zcvf "$file" (echo appdynamics/config*)
+        echo "Here is the generated file $file)
+        $bundleFileName = echo "$file"
         echo "::set-output name=bundle_name::$bundleFileName"
      - name: Release the bundle for linux
        uses: softprops/action-gh-release@v1
