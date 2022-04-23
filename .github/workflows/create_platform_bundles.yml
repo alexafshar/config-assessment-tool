@@ -34,6 +34,11 @@ jobs:
        with:
          files: dist/appdynamics/*.tgz
          token: ${{ secrets.WORKFLOW_TOKEN }}
+     - name: Save Bundle as artifact
+       uses: actions/upload-artifact@v3
+       with:
+         name: my-artifact
+         path: dist/appdynamics/*.tgz
 
   build-win:
    name: build windows binary
