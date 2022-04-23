@@ -28,6 +28,7 @@ jobs:
         pyinstaller --distpath=./dist/appdynamics backend/config-assessment-tool.spec
         cd dist
         tar -zcvf $(echo appdynamics/config*).tgz $(echo appdynamics/config*)
+        echo "::set-env name=bundleFileName::$(ls *.tgz)"
      - name: Release the bundle for linux
        uses: softprops/action-gh-release@v1
        if: startsWith(github.ref, 'refs/tags/')
@@ -37,7 +38,7 @@ jobs:
      - name: Save bundle as artifact
        uses: actions/upload-artifact@v3
        with:
-         name: echo $(ls *.tgz)
+         name: echo $bundleFileName
          path: dist/appdynamics/*.tgz
 
   build-win:
