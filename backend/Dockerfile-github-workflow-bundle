@@ -30,7 +30,7 @@ RUN pipx install pipenv
 RUN pipx install pyinstaller
 
 # install into system with pip install to avoid pipenv hanging issues in docker
-RUN pipenv lock --dev -r > requirements.txt
+RUN pipenv requirements > requirements.txt
 RUN export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH; pip install -r requirements.txt
 RUN export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH; pyinstaller --distpath=./dist/appdynamics backend/config-assessment-tool.spec
 
