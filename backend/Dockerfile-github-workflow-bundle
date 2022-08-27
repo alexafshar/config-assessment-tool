@@ -42,5 +42,6 @@ WORKDIR /root
 
 # tar up the bundle as part of the image for subsequent copy to hosted runner env.
 RUN ls -altrh
-RUN tar -zcvf /root/config-assessment-tool/dist/$(echo appdynamics/config*).tgz $(echo appdynamics/config*)
+RUN BUNDLE_VERSION=`cat VERSION`
+RUN tar -zcvf /root/config-assessment-tool/dist/config-assessment-tool-linux-$BUNDLE_VERSION.tgz -C /root/config-assessment-tool/dist/appdynamics .
 RUN ls -altrh /root/config-assessment-tool/dist/appdynamics
