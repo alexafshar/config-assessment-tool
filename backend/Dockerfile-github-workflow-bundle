@@ -38,7 +38,7 @@ RUN pipenv requirements > requirements.txt
 RUN export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH; pip install -r requirements.txt
 RUN export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH; pyinstaller --distpath=./dist/appdynamics backend/config-assessment-tool.spec
 
-WORKDIR /
+WORKDIR /root
 
 # tar up the bundle as part of the image for subsequent copy to hosted runner env.
 RUN ls -altrh
