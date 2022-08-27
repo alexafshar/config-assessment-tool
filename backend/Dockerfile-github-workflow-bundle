@@ -31,6 +31,8 @@ COPY VERSION .
 COPY Pipfile .
 COPY Pipfile.lock .
 
+RUN BUNDLE_VERSION=`cat VERSION`
+
 RUN pipx install pipenv
 RUN pipx install pyinstaller
 RUN export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH; python3.9 -m pip install --upgrade pip
@@ -42,6 +44,5 @@ WORKDIR /root
 
 # tar up the bundle as part of the image for subsequent copy to hosted runner env.
 RUN ls -altrh
-RUN BUNDLE_VERSION=`cat VERSION`
 RUN tar -zcvf /root/config-assessment-tool/dist/config-assessment-tool-linux-$BUNDLE_VERSION.tgz -C /root/config-assessment-tool/dist/appdynamics .
 RUN ls -altrh /root/config-assessment-tool/dist/appdynamics
