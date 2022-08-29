@@ -12,8 +12,6 @@ jobs:
    steps:
      - name: Checkout repository
        uses: actions/checkout@v2
-       with:
-         ref: 'github-workflow'
      - name: Install dependencies
        run: |
          # build image which builds the bundle for glibc 2.15+
