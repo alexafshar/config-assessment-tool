@@ -142,6 +142,7 @@ class Engine:
                 verifySsl=controller.get("verifySsl", True),
                 useProxy=controller.get("useProxy", False),
                 applicationFilter=controller.get("applicationFilter", None),
+                applicationDescriptionFilter=controller.get("applicationDescriptionFilter", None),
                 timeRangeMins=controller.get("timeRangeMins", 1440),
             )
             for controller in self.job

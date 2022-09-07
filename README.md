@@ -198,6 +198,16 @@ See aiohttp.ClientSession [documentation](https://docs.aiohttp.org/en/stable/cli
   - Three filters are available, one for `apm`, `mrum`, and `brum`
   - The filter value accepts any valid regex, set to `.*` by default
   - Set the value to null to filter out all applications for the set type
+- applicationDescriptionFilter
+  - A secondary filter based on description value for `apm` applications only
+  - The filter value accepts any valid regex, set to `.*` by default to include all applications
+  - You can use regex to include or exclude applications based on the description values. For example the below value will exclude processing APM applications that include `DEMO` in their description
+   ```
+          "applicationDescriptionFilter": {
+            "apm": "^((?!DEMO).)*$"
+          } 
+  ```
+  - Set the value to null to filter out all applications
 - timeRangeMins
   - Configure the data pull time range, by default set to 1 day (1440 mins)
 - pwd
