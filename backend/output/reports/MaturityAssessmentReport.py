@@ -27,30 +27,53 @@ class MaturityAssessmentReport(ReportBase):
                 jobStep.reportData(workbook, controllerData, name)
 
             # Write Headers
-            writeUncoloredRow(
-                analysisSheet,
-                1,
-                [
-                    "controller",
-                    "componentType",
-                    "name",
-                    *jobNameCols,
-                ],
-            )
+            if reportType == "apm":
+                writeUncoloredRow(
+                    analysisSheet,
+                    1,
+                    ["controller",
+                     "componentType",
+                     "name",
+                     "description",
+                     *jobNameCols],
+                )
+            else: # no description for brum/mrum
+                writeUncoloredRow(
+                    analysisSheet,
+                    1,
+                    ["controller",
+                     "componentType",
+                     "name",
+                     *jobNameCols],
+                )
 
             rowIdx = 2
             for host, hostInfo in controllerData.items():
                 for component in hostInfo[reportType].values():
-                    writeColoredRow(
-                        analysisSheet,
-                        rowIdx,
-                        [
-                            (hostInfo["controller"].host, None),
-                            (reportType, None),
-                            (component["name"], None),
-                            *[component[jobStep]["computed"] for jobStep in [type(jobStep).__name__ for jobStep in filteredJobs]],
-                        ],
-                    )
+                    if reportType == "apm":
+                        writeColoredRow(
+                            analysisSheet,
+                            rowIdx,
+                            [
+                                (hostInfo["controller"].host, None),
+                                (reportType, None),
+                                (component["name"], None),
+                                (component["description"], None),
+                                *[component[jobStep]["computed"] for jobStep in [type(jobStep).__name__ for jobStep in filteredJobs]],
+                            ],
+                        )
+                    else: # no description for brum/mrum
+                        writeColoredRow(
+                            analysisSheet,
+                            rowIdx,
+                            [
+                                (hostInfo["controller"].host, None),
+                                (reportType, None),
+                                (component["name"], None),
+                                *[component[jobStep]["computed"] for jobStep in [type(jobStep).__name__ for jobStep in filteredJobs]],
+                            ],
+                        )
+
                     rowIdx += 1
 
             addFilterAndFreeze(analysisSheet)

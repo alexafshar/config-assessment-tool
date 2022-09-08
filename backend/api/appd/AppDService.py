@@ -31,6 +31,7 @@ class AppDService:
         verifySsl: bool = True,
         useProxy: bool = False,
         applicationFilter: dict = None,
+        applicationDescriptionFilter: dict = None,
         timeRangeMins: int = 1440,
     ):
         logging.debug(f"{host} - Initializing controller service")
@@ -39,6 +40,7 @@ class AppDService:
         self.host = host
         self.username = username
         self.applicationFilter = applicationFilter
+        self.applicationDescriptionFilter = applicationDescriptionFilter
         self.timeRangeMins = timeRangeMins
         self.endTime = int(round(time.time() * 1000))
         self.startTime = self.endTime - (1 * 60 * self.timeRangeMins * 1000)
@@ -121,7 +123,12 @@ class AppDService:
 
         if self.applicationFilter is not None:
             if self.applicationFilter.get("apm") is None:
-                logging.warning(f"Filtered out all APM applications from analysis by match rule {self.applicationFilter['apm']}")
+                logging.warning(f"Filtered out all APM applications from analysis by 'name' match rule {self.applicationFilter['apm']}")
+                return Result([], None)
+
+        if self.applicationDescriptionFilter is not None:
+            if self.applicationDescriptionFilter.get("apm") is None:
+                logging.warning(f"Filtered out all APM applications from analysis by 'description' match rule {self.applicationDescriptionFilter['apm']}")
                 return Result([], None)
 
         response = await self.controller.getApmApplications()
@@ -136,8 +143,15 @@ class AppDService:
             pattern = re.compile(self.applicationFilter["apm"])
             for application in result.data:
                 if not pattern.search(application["name"]):
-                    logging.warning(f"Filtered out APM application {application['name']} from analysis by match rule {self.applicationFilter['apm']}")
+                    logging.warning(f"Filtered out APM application {application['name']} from analysis by 'name' match rule {self.applicationFilter['apm']}")
             result.data = [application for application in result.data if pattern.search(application["name"])]
+
+        if self.applicationDescriptionFilter is not None:
+            pattern = re.compile(self.applicationDescriptionFilter["apm"])
+            for application in result.data:
+                if not pattern.search(application["description"]):
+                    logging.warning(f"Filtered out APM application {application['description']} from analysis by 'description' match rule {self.applicationDescriptionFilter['apm']}")
+            result.data = [application for application in result.data if pattern.search(application["description"])]
 
         return result
 
