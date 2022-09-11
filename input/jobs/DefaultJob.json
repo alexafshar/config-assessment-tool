@@ -13,6 +13,9 @@
 			"mrum": ".*",
 			"brum": ".*"
 		},
+		"applicationDescriptionFilter": {
+			"apm": ".*"
+		},
 		"timeRangeMins": 1440
 	}
 ]
