@@ -22,6 +22,16 @@ class AppdController(Consumer):
         """Verifies Login Success"""
 
     @params({"output": "json"})
+    @headers(
+        {
+            "Content-Type" : "application/vnd.appd.cntrl+protobuf;v=1",
+        }
+    )
+    @post("/controller/api/oauth/access_token")
+    def loginOauth(self, body: Body):
+        """Verifies Login Success using oAuth"""
+
+    @params({"output": "json"})
     @get("/controller/rest/applications")
     def getApmApplications(self):
         """Retrieves Applications"""
