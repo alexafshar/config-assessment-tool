@@ -31,6 +31,7 @@ async def controller():
     account = os.getenv("TEST_CONTROLLER_ACCOUNT")
     username = os.getenv("TEST_CONTROLLER_USERNAME")
     pwd = os.getenv("TEST_CONTROLLER_PASSWORD")
+    client_secret = os.getenv("TEST_CONTROLLER_CLIENT_SECRET")
 
     controller = AppDService(
         host=host,
@@ -45,9 +46,13 @@ async def controller():
 
 @pytest.mark.asyncio
 async def testLogin(controller):
-    assert (await controller.loginToController()).error is None
+    assert (await controller.loginToController(method="password")).error is None
     await controller.close()
 
+@pytest.mark.asyncio
+async def testLoginUsingOAuth(controller):
+    assert (await controller.loginToController(method="oauth")).error is None
+    await controller.close()
 
 @pytest.mark.asyncio
 async def testGetApmApplications(controller):

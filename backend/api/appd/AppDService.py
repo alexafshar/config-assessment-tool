@@ -12,7 +12,7 @@ import aiohttp
 from api.appd.AppDController import AppdController
 from api.Result import Result
 from uplink import AiohttpClient
-from uplink.auth import BasicAuth, MultiAuth, ProxyAuth
+from uplink.auth import BasicAuth, MultiAuth, ProxyAuth, BearerToken, ApiTokenParam
 from util.asyncio_utils import AsyncioUtils
 from util.stdlib_utils import get_recursively
 
@@ -32,10 +32,16 @@ class AppDService:
         useProxy: bool = False,
         applicationFilter: dict = None,
         timeRangeMins: int = 1440,
+
+
+
     ):
         logging.debug(f"{host} - Initializing controller service")
         connection_url = f'{"https" if ssl else "http"}://{host}:{port}'
+        # auth = BasicAuth(f"{username}@{account}", pwd)
         auth = BasicAuth(f"{username}@{account}", pwd)
+        logging.debug(f"{host} - Using auth: {auth}")
+
         self.host = host
         self.username = username
         self.applicationFilter = applicationFilter
@@ -69,16 +75,33 @@ class AppDService:
             "username": self.username,
         }
 
-    async def loginToController(self) -> Result:
-        logging.debug(f"{self.host} - Attempt controller connection.")
-        try:
-            response = await self.controller.login()
-        except Exception as e:
-            logging.error(f"{self.host} - Controller login failed with {e}")
-            return Result(
-                None,
-                Result.Error(f"{self.host} - {e}."),
-            )
+    async def loginToController(self, method) -> Result:
+        logging.debug(f"{self.host} - Attempt controller connection using auth method {method}.")
+
+        if method == "basic":
+            try:
+                response = await self.controller.login()
+            except Exception as e:
+                logging.error(f"{self.host} - Controller login failed with {e}")
+                return Result(
+                    None,
+                    Result.Error(f"{self.host} - {e}."),
+                )
+        elif method == "oauth":
+            body = {
+                "grant_type": "client_credentials",
+            }
+            # "client_id": "config-tool-assessment@appd-cse-amer",
+            # "client_secret": "6ae20697-90cc-4c3a-9204-334e0ab5afc0",
+            try:
+                response = await self.controller.loginOauth(json.dumps(body))
+            except Exception as e:
+                logging.error(f"{self.host} - Controller oAuth login failed with {e}")
+                return Result(
+                    None,
+                    Result.Error(f"{self.host} - {e}."),
+                )
+
         if response.status_code != 200:
             logging.error(f"{self.host} - Controller login failed with {response.status_code}. Check username and password.")
             return Result(
