@@ -91,8 +91,6 @@ class AppDService:
             body = {
                 "grant_type": "client_credentials",
             }
-            # "client_id": "config-tool-assessment@appd-cse-amer",
-            # "client_secret": "6ae20697-90cc-4c3a-9204-334e0ab5afc0",
             try:
                 response = await self.controller.loginOauth(json.dumps(body))
             except Exception as e:
