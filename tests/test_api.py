@@ -31,7 +31,7 @@ async def controller():
     account = os.getenv("TEST_CONTROLLER_ACCOUNT")
     username = os.getenv("TEST_CONTROLLER_USERNAME")
     pwd = os.getenv("TEST_CONTROLLER_PASSWORD")
-    ***REMOVED*** = os.getenv("TEST_CONTROLLER_CLIENT_SECRET")
+    client_secret = os.getenv("TEST_CONTROLLER_CLIENT_SECRET")
 
     controller = AppDService(
         host=host,
