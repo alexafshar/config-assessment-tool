@@ -32,9 +32,6 @@ class AppDService:
         useProxy: bool = False,
         applicationFilter: dict = None,
         timeRangeMins: int = 1440,
-
-
-
     ):
 
         logging.info(f"{host} - Initializing controller service")
