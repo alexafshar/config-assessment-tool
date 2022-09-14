@@ -36,9 +36,9 @@ class AppDService:
 
 
     ):
-        logging.debug(f"{host} - Initializing controller service")
+
+        logging.info(f"{host} - Initializing controller service")
         connection_url = f'{"https" if ssl else "http"}://{host}:{port}'
-        # auth = BasicAuth(f"{username}@{account}", pwd)
         auth = BasicAuth(f"{username}@{account}", pwd)
         logging.debug(f"{host} - Using auth: {auth}")
 
@@ -75,7 +75,7 @@ class AppDService:
             "username": self.username,
         }
 
-    async def loginToController(self, method) -> Result:
+    async def loginToController(self, method="basic") -> Result:
         logging.debug(f"{self.host} - Attempt controller connection using auth method {method}.")
 
         if method == "basic":

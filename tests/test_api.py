@@ -1,9 +1,11 @@
 import asyncio
+import logging
 import os
 from distutils.util import strtobool
 
 import pytest
 from api.appd.AppDService import AppDService
+from util.logging_utils import initLogging
 
 APPLICATION_ID = int(os.getenv("TEST_CONTROLLER_APPLICATION_ID"))
 EUM_APPLICATION_ID = int(os.getenv("TEST_CONTROLLER_EUM_APPLICATION_ID"))
@@ -22,6 +24,7 @@ def event_loop():
 
 @pytest.fixture
 async def controller():
+
     if os.name == "nt":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
