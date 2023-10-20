@@ -29,7 +29,6 @@ class OverallAssessmentMRUM(JobStepBase):
             logging.info(f'{hostInfo["controller"].host} - Analyzing {jobStepName}')
 
             for application in hostInfo[self.componentType].values():
-
                 # Root node of current application for current JobStep.
                 analysisDataRoot = application[jobStepName] = OrderedDict()
                 # This data goes into the 'JobStep - Metrics' xlsx sheet.

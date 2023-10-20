@@ -44,7 +44,6 @@ from util.stdlib_utils import base64Decode, base64Encode, isBase64, jsonEncoder
 
 class Engine:
     def __init__(self, jobFileName: str, thresholdsFileName: str, concurrentConnections: int, username: str, password: str):
-
         if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
             # running as executable bundle
             path = sys._MEIPASS
