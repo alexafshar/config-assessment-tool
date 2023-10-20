@@ -75,7 +75,7 @@ class AppDService:
             "username": self.username,
         }
 
-    async def loginToController(self, method) -> Result:
+    async def loginToController(self, method="basic") -> Result:
         logging.debug(f"{self.host} - Attempt controller connection using auth method {method}.")
 
         if method == "basic":

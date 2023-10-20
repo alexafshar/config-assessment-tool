@@ -45,12 +45,12 @@ async def controller():
 
 
 @pytest.mark.asyncio
-async def testLogin(controller):
-    assert (await controller.loginToController(method="password")).error is None
+async def testLogin(controller:AppDService):
+    assert (await controller.loginToController(method="basic")).error is None
     await controller.close()
 
 @pytest.mark.asyncio
-async def testLoginUsingOAuth(controller):
+async def testLoginUsingOAuth(controller:AppDService):
     assert (await controller.loginToController(method="oauth")).error is None
     await controller.close()
 
@@ -69,7 +69,7 @@ async def testGetApmApplications(controller):
 
 
 @pytest.mark.asyncio
-async def testGetBtMatchRules(controller):
+async def testGetBtMatchRules(controller:AppDService):
     assert (await controller.loginToController()).error is None
     btMatchRules = await controller.getBtMatchRules(APPLICATION_ID)
 
