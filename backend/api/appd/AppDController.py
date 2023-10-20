@@ -24,7 +24,7 @@ class AppdController(Consumer):
     @params({"output": "json"})
     @headers(
         {
-            "Content-Type" : "application/vnd.appd.cntrl+protobuf;v=1",
+            "Content-Type": "application/vnd.appd.cntrl+protobuf;v=1",
         }
     )
     @post("/controller/api/oauth/access_token")

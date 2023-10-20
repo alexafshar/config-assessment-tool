@@ -49,10 +49,12 @@ async def testLogin(controller:AppDService):
     assert (await controller.loginToController(method="basic")).error is None
     await controller.close()
 
+
 @pytest.mark.asyncio
 async def testLoginUsingOAuth(controller:AppDService):
     assert (await controller.loginToController(method="oauth")).error is None
     await controller.close()
+
 
 @pytest.mark.asyncio
 async def testGetApmApplications(controller):
