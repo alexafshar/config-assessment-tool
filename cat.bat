@@ -29,6 +29,7 @@ REM ==========================================
 REM Argument Parsing
 REM ==========================================
 if "%1"=="--start" goto start
+if "%1"=="--plugin" goto plugin
 if "%1"=="shutdown" goto shutdown
 goto usage
 
@@ -113,6 +114,48 @@ goto end
 
 
 REM ==========================================
+REM Plugin Management
+REM ==========================================
+:plugin
+shift
+if "%1"=="list" goto plugin_list
+if "%1"=="docs" goto plugin_docs
+if "%1"=="start" goto plugin_start
+echo Error: Unknown plugin command.
+goto usage
+
+:plugin_list
+set PYTHONPATH=%cd%;%cd%\backend
+pipenv run python backend\plugin_manager.py list
+goto end
+
+:plugin_docs
+shift
+if "%1"=="" (
+    echo Error: Plugin name required.
+    exit /b 1
+)
+set PLUGIN_NAME=%1
+set PYTHONPATH=%cd%;%cd%\backend
+pipenv run python backend\plugin_manager.py docs %PLUGIN_NAME%
+goto end
+
+:plugin_start
+shift
+if "%1"=="" (
+    echo Error: Plugin name required.
+    exit /b 1
+)
+set PLUGIN_NAME=%1
+shift
+REM Capture arguments manually for simplicity in batch
+set ARGS=%1 %2 %3 %4 %5 %6 %7 %8 %9
+set PYTHONPATH=%cd%;%cd%\backend
+pipenv run python backend\plugin_manager.py start %PLUGIN_NAME% %ARGS%
+goto end
+
+
+REM ==========================================
 REM Shutdown Mode
 REM ==========================================
 :shutdown
@@ -139,14 +182,18 @@ REM Usage / Help
 REM ==========================================
 :usage
 echo Usage:
-echo   cat.bat --start                # Starts CAT UI locally (Uses pipenv)
-echo   cat.bat --start [args]         # Starts CAT backend locally (Uses pipenv)
-echo   cat.bat --start docker         # Starts CAT UI in Docker (Uses host python for FileHandler)
-echo   cat.bat --start docker [args]  # Starts CAT backend in Docker
+echo   cat.bat --start                # Starts CAT UI. Requires Python 3.12 and pipenv installed. UI accessible at http://localhost:8501
+echo   cat.bat --start [args]         # Starts CAT headless mode from source with [args]. Requires Python 3.12 ^& pipenv installed.
+echo   cat.bat --start docker         # Starts CAT UI using Docker. Requires Docker. UI accessible at http://localhost:8501
+echo   cat.bat --start docker [args]  # Starts CAT headless mode using Docker with [args]. Requires Docker installed.
+echo   cat.bat --plugin [list^|start ^<plugin^>^|docs ^<plugin^>]  # list plugins^|run ^<plugin^>^|show docs for ^<plugin^>
 echo   cat.bat shutdown               # Stop container and processes
 echo.
-echo Arguments:
-echo   --job-file name, --thresholds-file name, --debug, etc.
+echo Arguments [args]:
+echo   -j, --job-file ^<name^>             Job file name (default: DefaultJob)
+echo   -t, --thresholds-file ^<name^>      Thresholds file name (default: DefaultThresholds)
+echo   -d, --debug                       Enable debug logging
+echo   -c, --concurrent-connections ^<n^>  Number of concurrent connections
 goto end
 
 :end
