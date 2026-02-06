@@ -102,6 +102,21 @@ REM ==========================================
 REM Setting PYTHONPATH for local execution
 set PYTHONPATH=%cd%;%cd%\backend
 
+REM Check for pipenv and install if missing
+pipenv --version >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo pipenv not found. Attempting to install via pip...
+    pip install pipenv
+    if %ERRORLEVEL% NEQ 0 (
+        echo Error: Failed to install pipenv. Please ensure Python and pip are installed and in your PATH.
+        exit /b 1
+    )
+)
+
+REM Ensure dependencies are installed
+echo Checking/Installing dependencies...
+pipenv install
+
 if "%1"=="" (
     echo Running application in UI mode from source...
     echo UI available at http://localhost:%PORT%

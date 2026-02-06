@@ -82,6 +82,11 @@ case "$1" in
     else
       export PYTHONPATH="$(pwd):$(pwd)/backend"
 
+      if ! command -v pipenv &> /dev/null; then
+        echo "pipenv not found. Attempting to install via pip..."
+        pip install pipenv
+      fi
+
       # Ensure dependencies are installed before running
       echo "Checking/Installing dependencies..."
       pipenv install
