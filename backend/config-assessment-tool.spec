@@ -39,6 +39,7 @@ a = Analysis(
         ("../backend/resources/pptAssets/xmark.png", "backend/resources/pptAssets"),
         ("../backend/resources/pptAssets/HybridApplicationMonitoringUseCase.json", "backend/resources/pptAssets"),
         ("../backend/resources/pptAssets/HybridApplicationMonitoringUseCase_template.pptx", "backend/resources/pptAssets"),
+        ("../backend/resources/pptAssets/cxPpt_template.pptx", "backend/resources/pptAssets"),
      	(path.join(site_packages,"pptx","templates"), "pptx/templates"), # for pptx
 
         # Config files previously handled by manual copy
@@ -76,4 +77,3 @@ exe = EXE(
     entitlements_file=None,
 )
 coll = COLLECT(exe, a.binaries, a.zipfiles, a.datas, strip=False, upx=True, upx_exclude=[], name=bundle_name)
-
