@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 # CHANGED: Upgraded to 8.x to satisfy Black 24.x
 click = ">=8.0.0"
+colorama = "*"
 openpyxl = ">=3.1.0"
 # CHANGED: Relaxed to allow newer versions compatible with Py3.12
 uplink = ">=0.9.7"
