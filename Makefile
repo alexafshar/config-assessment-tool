@@ -10,8 +10,13 @@ LOG_FILES := logs/*.log config-assessment-tool-backend-joshua.log
 BACKEND_SCRIPT := backend/backend.py
 INPUT_FILE := input/jobs/DefaultJob.json
 
-# Allow override of Docker repo/namespace (default: alexafshar)
-DOCKER_REPO ?= alexafshar
+# Allow override of Docker repo/namespace (default: auto-detected or appdynamics)
+GIT_REPO_OWNER := $(shell git config --get remote.origin.url | sed -E 's/.*github.com[:\/]([^/]+)\/.*/\1/' | tr '[:upper:]' '[:lower:]')
+ifeq ($(GIT_REPO_OWNER),)
+  DOCKER_REPO ?= appdynamics
+else
+  DOCKER_REPO ?= $(GIT_REPO_OWNER)
+endif
 
 # Default Dockerfile
 DOCKERFILE ?= Dockerfile

@@ -21,7 +21,22 @@ else
   exit 1
 fi
 
-REPO="ghcr.io/alexafshar/config-assessment-tool-${OS_TAG}-${ARCH_TAG}"
+# Detect Repo Owner from Git
+if command -v git &> /dev/null; then
+  GIT_ORIGIN=$(git config --get remote.origin.url)
+  # Extract username from git@github.com:user/repo.git or https://github.com/user/repo.git
+  if [[ "$GIT_ORIGIN" =~ github.com[:/]([^/]+)/ ]]; then
+    REPO_OWNER="${BASH_REMATCH[1]}"
+  fi
+fi
+
+# Default to appdynamics if detection failed or empty
+REPO_OWNER="${REPO_OWNER:-appdynamics}"
+
+# Convert to lowercase to be safe for docker images
+REPO_OWNER=$(echo "$REPO_OWNER" | tr '[:upper:]' '[:lower:]')
+
+REPO="ghcr.io/${REPO_OWNER}/config-assessment-tool-${OS_TAG}-${ARCH_TAG}"
 
 if [[ -f VERSION ]]; then
   VERSION=$(cat VERSION)
@@ -29,6 +44,58 @@ else
   echo "VERSION file not found."
   exit 1
 fi
+
+check_available_images() {
+  echo "  Checking available Docker images..."
+  local found_images=false
+  local repo_url="https://github.com/${REPO_OWNER}?tab=packages&repo_name=config-assessment-tool"
+
+  # Check if curl is available
+  if ! command -v curl &> /dev/null; then
+    echo "    (curl not found, cannot automatically verify images)"
+    echo "    Please check the repository manually for available packages at:"
+    echo "    $repo_url"
+    return
+  fi
+
+  # Query GitHub Packages page for this user/org
+  local html_content
+  if ! html_content=$(curl -s "$repo_url"); then
+     echo "    (Failed to connect to GitHub to verify images)"
+     echo "    Please check the repository manually for available packages at:"
+     echo "    $repo_url"
+     return
+  fi
+
+  echo "  Available Images (verified on GitHub for user '$REPO_OWNER'):"
+
+  # Check Linux AMD64
+  if echo "$html_content" | grep -q "config-assessment-tool-linux-amd64"; then
+    echo "    ghcr.io/${REPO_OWNER}/config-assessment-tool-linux-amd64:$VERSION"
+    found_images=true
+  fi
+
+  # Check Linux ARM
+  if echo "$html_content" | grep -q "config-assessment-tool-linux-arm"; then
+    echo "    ghcr.io/${REPO_OWNER}/config-assessment-tool-linux-arm:$VERSION"
+    found_images=true
+  fi
+
+  # Check Windows
+  if echo "$html_content" | grep -q "config-assessment-tool-windows-amd64"; then
+    echo "    ghcr.io/${REPO_OWNER}/config-assessment-tool-windows-amd64:$VERSION"
+    found_images=true
+  fi
+
+  if [ "$found_images" = false ]; then
+    echo "    (No verified images found locally for version $VERSION)"
+    # Fallback to listing expected ones if verify fails or none found?
+    # Or just print what we expect.
+    echo "    ghcr.io/${REPO_OWNER}/config-assessment-tool-linux-amd64:$VERSION"
+    echo "    ghcr.io/${REPO_OWNER}/config-assessment-tool-windows-amd64:$VERSION"
+  fi
+  echo "  "
+}
 
 IMAGE="$REPO:$VERSION"
 PORT="8501"
@@ -161,7 +228,27 @@ case "$1" in
     echo "  -d, --debug                       Enable debug logging"
     echo "  -c, --concurrent-connections <n>  Number of concurrent connections"
     echo "  "
+    echo "Direct Docker Usage:"
+    echo "  You can also run the tool directly using Docker without this script."
+    echo "  Ensure you mount the input, output, and logs directories."
     echo "  "
+    echo "  # UI Mode:"
+    echo "  docker run -p 8501:8501 \\"
+    echo "    -v \$(pwd)/input:/app/input \\"
+    echo "    -v \$(pwd)/output:/app/output \\"
+    echo "    -v \$(pwd)/logs:/app/logs \\"
+    echo "    $REPO:$VERSION"
+    echo "  "
+    echo "  # Headless Mode:"
+    echo "  docker run --rm \\"
+    echo "    -v \$(pwd)/input:/app/input \\"
+    echo "    -v \$(pwd)/output:/app/output \\"
+    echo "    -v \$(pwd)/logs:/app/logs \\"
+    echo "    $REPO:$VERSION backend -j <job-file>"
+    echo "  "
+
+    check_available_images
     exit 1
     ;;
 esac
+
