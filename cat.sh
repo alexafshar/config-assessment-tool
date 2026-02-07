@@ -26,17 +26,22 @@ if command -v git &> /dev/null; then
   GIT_ORIGIN=$(git config --get remote.origin.url)
   # Extract username from git@github.com:user/repo.git or https://github.com/user/repo.git
   if [[ "$GIT_ORIGIN" =~ github.com[:/]([^/]+)/ ]]; then
-    REPO_OWNER="${BASH_REMATCH[1]}"
+    DETECTED_OWNER="${BASH_REMATCH[1]}"
   fi
 fi
 
-# Default to appdynamics if detection failed or empty
-REPO_OWNER="${REPO_OWNER:-appdynamics}"
+# Use appdynamics if detecting developer's fork or no detection
+if [[ "$DETECTED_OWNER" == "alexafshar" ]] || [[ -z "$DETECTED_OWNER" ]]; then
+  REPO_OWNER="appdynamics"
+else
+  REPO_OWNER="$DETECTED_OWNER"
+fi
 
 # Convert to lowercase to be safe for docker images
 REPO_OWNER=$(echo "$REPO_OWNER" | tr '[:upper:]' '[:lower:]')
 
-REPO="ghcr.io/${REPO_OWNER}/config-assessment-tool-${OS_TAG}-${ARCH_TAG}"
+# We now use a single multi-arch manifest image
+IMAGE_NAME="ghcr.io/${REPO_OWNER}/config-assessment-tool"
 
 if [[ -f VERSION ]]; then
   VERSION=$(cat VERSION)
@@ -60,7 +65,7 @@ check_available_images() {
 
   # Query GitHub Packages page for this user/org
   local html_content
-  if ! html_content=$(curl -s "$repo_url"); then
+  if ! html_content=$(curl -s -L "$repo_url"); then
      echo "    (Failed to connect to GitHub to verify images)"
      echo "    Please check the repository manually for available packages at:"
      echo "    $repo_url"
@@ -69,35 +74,34 @@ check_available_images() {
 
   echo "  Available Images (verified on GitHub for user '$REPO_OWNER'):"
 
-  # Check Linux AMD64
-  if echo "$html_content" | grep -q "config-assessment-tool-linux-amd64"; then
-    echo "    ghcr.io/${REPO_OWNER}/config-assessment-tool-linux-amd64:$VERSION"
+  # Check for the main package which now holds multi-arch manifest
+  if echo "$html_content" | grep -q "config-assessment-tool"; then
+    echo "    $IMAGE_NAME:$VERSION (Multi-arch: Linux x86/ARM/RISC-V, Windows x86)"
     found_images=true
-  fi
-
-  # Check Linux ARM
-  if echo "$html_content" | grep -q "config-assessment-tool-linux-arm"; then
-    echo "    ghcr.io/${REPO_OWNER}/config-assessment-tool-linux-arm:$VERSION"
-    found_images=true
-  fi
-
-  # Check Windows
-  if echo "$html_content" | grep -q "config-assessment-tool-windows-amd64"; then
-    echo "    ghcr.io/${REPO_OWNER}/config-assessment-tool-windows-amd64:$VERSION"
-    found_images=true
+  else
+    # Fallback to checking for specific platform tags if main one isn't clear from HTML grep
+    # (HTML grep is brittle, but requested method)
+    # Check Linux Multiarch
+    if echo "$html_content" | grep -q "config-assessment-tool-linux-multiarch"; then
+      echo "    $IMAGE_NAME-linux-multiarch:$VERSION"
+      found_images=true
+    fi
+    # Check Windows
+    if echo "$html_content" | grep -q "config-assessment-tool-windows-amd64"; then
+      echo "    $IMAGE_NAME-windows-amd64:$VERSION"
+      found_images=true
+    fi
   fi
 
   if [ "$found_images" = false ]; then
     echo "    (No verified images found locally for version $VERSION)"
     # Fallback to listing expected ones if verify fails or none found?
-    # Or just print what we expect.
-    echo "    ghcr.io/${REPO_OWNER}/config-assessment-tool-linux-amd64:$VERSION"
-    echo "    ghcr.io/${REPO_OWNER}/config-assessment-tool-windows-amd64:$VERSION"
+    echo "    $IMAGE_NAME:$VERSION (Linux/Windows Multi-arch)"
   fi
   echo "  "
 }
 
-IMAGE="$REPO:$VERSION"
+IMAGE="$IMAGE_NAME:$VERSION"
 PORT="8501"
 LOG_DIR="logs"
 LOG_FILE="$LOG_DIR/config-assessment-tool.log"
@@ -232,7 +236,7 @@ case "$1" in
     echo "  You can also run the tool directly using Docker without this script."
     echo "  Ensure you mount the input, output, and logs directories."
     echo "  "
-    echo "  # UI Mode:"
+    echo "  # UI Mode (Auto-detects architecture: x86/ARM/RISC-V):"
     echo "  docker run -p 8501:8501 \\"
     echo "    -v \$(pwd)/input:/app/input \\"
     echo "    -v \$(pwd)/output:/app/output \\"

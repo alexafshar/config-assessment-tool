@@ -19,6 +19,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -39,27 +42,19 @@ jobs:
           fi
 
       - name: Build Docker image using Makefile
-        run: make build-image DOCKER_REPO=${{ steps.set_repo.outputs.repo }}
-
-      - name: Get Docker image tag
-        id: get_tag
         run: |
+          # We cannot use 'make build-image' directly for multi-arch build and push in one go easily 
+          # without modifying Makefile or using docker buildx command directly here.
+          # The user wants to use this workflow for multi-arch.
+          # I will replace the make command with docker buildx command.
           TAG=$(cat VERSION)
-          ARCH=$(uname | tr '[:upper:]' '[:lower:]')
-          if [ "$ARCH" = "darwin" ]; then
-            ARCH="macos"
-          elif [ "$ARCH" = "linux" ]; then
-            ARCH="linux"
-          fi
-          CHIP=$(uname -m)
-          if [ "$CHIP" = "x86_64" ]; then
-            CHIP="amd64"
-          elif [ "$CHIP" = "arm64" ] || [ "$CHIP" = "aarch64" ]; then
-            CHIP="arm"
-          fi
           REPO="${{ steps.set_repo.outputs.repo }}"
-          IMAGE_TAG="ghcr.io/${REPO}/config-assessment-tool-${ARCH}-${CHIP}:$TAG"
-          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-
-      - name: Push Docker image
-        run: docker push ${{ steps.get_tag.outputs.image_tag }}
+          IMAGE="ghcr.io/${REPO}/config-assessment-tool-linux-multiarch:${TAG}"
+          
+          docker buildx build \
+            --platform linux/amd64,linux/arm64,linux/riscv64 \
+            --tag $IMAGE \
+            --push \
+            -f Dockerfile .
+            
+          echo "image_tag=$IMAGE" >> $GITHUB_OUTPUT
