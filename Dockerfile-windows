@@ -45,6 +45,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 3. Copy application code
 COPY backend /app/backend
 COPY frontend /app/frontend
+COPY plugins /app/plugins
 COPY VERSION .
 
 # 4. Set PYTHONPATH

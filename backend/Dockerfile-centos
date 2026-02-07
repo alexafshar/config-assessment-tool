@@ -41,6 +41,7 @@ RUN export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 WORKDIR /root/config-assessment-tool
 COPY backend ./backend
 COPY input ./input
+COPY plugins ./plugins
 COPY VERSION .
 COPY Pipfile .
 # COPY Pipfile.lock .
@@ -58,6 +59,9 @@ RUN pipenv requirements --dev > requirements.txt
 RUN export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH; python3.12 -m pip install --upgrade wheel
 RUN export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH; python3.12 -m pip install --prefer-binary -r requirements.txt
 RUN export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH; python3.12 -m PyInstaller --distpath=./dist/appdynamics backend/config-assessment-tool.spec
+
+# Copy plugins into the generated bundle directory (which is inside dist/appdynamics/)
+RUN cp -r plugins dist/appdynamics/*/
 
 WORKDIR /root
 
