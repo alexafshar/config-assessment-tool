@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-push:
-    runs-on: macos-13
+    runs-on: macos-12
 
     steps:
       - name: Checkout code
