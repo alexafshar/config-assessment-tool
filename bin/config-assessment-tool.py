@@ -15,11 +15,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from frontend.utils.docker_utils import get_image_tags, get_arch, get_version
 
 def run(path: str):
-    arch = get_arch()
-    version = get_version()
-    backend_image_tag, frontend_image_tag = get_image_tags()
-
-    splash = """
+    # Fix regex warning by using raw string
+    splash = r"""
                           __ _                                                              _        _              _
           ___ ___  _ __  / _(_) __ _        __ _ ___ ___  ___  ___ ___ _ __ ___   ___ _ __ | |_     | |_ ___   ___ | |
          / __/ _ \| '_ \| |_| |/ _` |_____ / _` / __/ __|/ _ \/ __/ __| '_ ` _ \ / _ \ '_ \| __|____| __/ _ \ / _ \| |
@@ -28,6 +25,17 @@ def run(path: str):
                                |___/
     """
     logging.info(splash)
+
+    # Verify Docker is available and running before proceeding
+    if not is_docker_available():
+        logging.error("Docker is not running or not accessible. Please start Docker Desktop.")
+        logging.info("If on Windows, ensure you are running as Administrator or have configured the Docker pipe.")
+        logging.info("Alternatively, use 'cat.bat --start' (Windows) or './cat.sh --start' (Linux/Mac) to run locally without Docker.")
+        sys.exit(1)
+
+    arch = get_arch()
+    version = get_version()
+    backend_image_tag, frontend_image_tag = get_image_tags()
 
     # Check if config-assessment-tool images exist
     if (
@@ -157,6 +165,15 @@ def package():
         zip_file.write("input/thresholds/DefaultThresholds.json")
         zip_file.write("frontend/FileHandler.py")
     logging.info("Created config-assessment-tool-dist.zip")
+
+def is_docker_available():
+    """Check if Docker daemon is running and accessible."""
+    try:
+        # Use subprocess directly to check return code, suppressing output
+        subprocess.check_call("docker info", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
 
 def runBlockingCommand(command: str):
     output = ""

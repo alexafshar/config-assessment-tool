@@ -33,7 +33,7 @@ def list_plugins():
             if os.path.exists(main_file):
                 if os.path.exists(readme_file):
                     if is_remote_session():
-                         status = f"(docs available)"
+                         status = f"(run: cat --plugin docs {p})"
                     else:
                         try:
                             import tempfile
@@ -68,6 +68,7 @@ def list_plugins():
                         except Exception:
                             abs_link_path = os.path.abspath(readme_file)
 
+                        # "see docs" link
                         link = f"\033]8;;file://{abs_link_path}\033\\see docs\033]8;;\033\\"
                         status = f"({link})"
                 else:
@@ -100,6 +101,7 @@ def start(name, args):
     requirements_file = os.path.join(plugin_path, "requirements.txt")
 
     if os.path.exists(requirements_file):
+        print(f"Loading plugin: {name},   detected standalone plugin. will not run as part of this process")
         print(f"Dependency file found: {requirements_file}")
         venv_dir = os.path.join(plugin_path, ".venv")
         # Handle Windows vs Unix venv paths

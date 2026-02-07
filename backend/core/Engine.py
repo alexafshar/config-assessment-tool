@@ -451,7 +451,6 @@ class Engine:
                 self.controllerData,
                 fp=f,
                 default=jsonEncoder,
-                ensure_ascii=False,
                 indent=4,
             )
 

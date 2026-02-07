@@ -102,9 +102,16 @@ REM ==========================================
 REM Setting PYTHONPATH for local execution
 set PYTHONPATH=%cd%;%cd%\backend
 
-REM Check for pipenv and install if missing
+REM Check for pipenv
+set PIPENV_CMD=pipenv
 pipenv --version >nul 2>&1
 if %ERRORLEVEL% EQU 0 goto pipenv_found
+
+python -m pipenv --version >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    set PIPENV_CMD=python -m pipenv
+    goto pipenv_found
+)
 
 echo pipenv not found. Attempting to install via pip...
 pip install pipenv
@@ -113,18 +120,26 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
+REM Check again after install
+python -m pipenv --version >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    set PIPENV_CMD=python -m pipenv
+    goto pipenv_found
+)
+set PIPENV_CMD=pipenv
+
 :pipenv_found
 REM Ensure dependencies are installed
 echo Checking/Installing dependencies...
-pipenv install
+%PIPENV_CMD% install
 
 if "%1"=="" (
     echo Running application in UI mode from source...
     echo UI available at http://localhost:%PORT%
-    pipenv run streamlit run frontend\frontend.py
+    %PIPENV_CMD% run streamlit run frontend\frontend.py
 ) else (
     echo Running application in backend mode from source with args: %1 %2 %3 %4 %5 %6 %7 %8 %9
-    pipenv run python backend\backend.py %1 %2 %3 %4 %5 %6 %7 %8 %9
+    %PIPENV_CMD% run python backend\backend.py %1 %2 %3 %4 %5 %6 %7 %8 %9
 )
 goto end
 
@@ -133,6 +148,19 @@ REM ==========================================
 REM Plugin Management
 REM ==========================================
 :plugin
+REM Pipenv detection for plugins
+set PIPENV_CMD=pipenv
+pipenv --version >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    python -m pipenv --version >nul 2>&1
+    if %ERRORLEVEL% EQU 0 (
+        set PIPENV_CMD=python -m pipenv
+    ) else (
+         echo pipenv not found. Please run --start to install dependencies first.
+         exit /b 1
+    )
+)
+
 shift
 if "%1"=="list" goto plugin_list
 if "%1"=="docs" goto plugin_docs
@@ -142,7 +170,7 @@ goto usage
 
 :plugin_list
 set PYTHONPATH=%cd%;%cd%\backend
-pipenv run python backend\plugin_manager.py list
+%PIPENV_CMD% run python backend\plugin_manager.py list
 goto end
 
 :plugin_docs
@@ -153,7 +181,7 @@ if "%1"=="" (
 )
 set PLUGIN_NAME=%1
 set PYTHONPATH=%cd%;%cd%\backend
-pipenv run python backend\plugin_manager.py docs %PLUGIN_NAME%
+%PIPENV_CMD% run python backend\plugin_manager.py docs %PLUGIN_NAME%
 goto end
 
 :plugin_start
@@ -167,7 +195,7 @@ shift
 REM Capture arguments manually for simplicity in batch
 set ARGS=%1 %2 %3 %4 %5 %6 %7 %8 %9
 set PYTHONPATH=%cd%;%cd%\backend
-pipenv run python backend\plugin_manager.py start %PLUGIN_NAME% %ARGS%
+%PIPENV_CMD% run python backend\plugin_manager.py start %PLUGIN_NAME% %ARGS%
 goto end
 
 
@@ -202,7 +230,7 @@ echo   cat.bat --start                # Starts CAT UI. Requires Python 3.12 and 
 echo   cat.bat --start [args]         # Starts CAT headless mode from source with [args]. Requires Python 3.12 ^& pipenv installed.
 echo   cat.bat --start docker         # Starts CAT UI using Docker. Requires Docker. UI accessible at http://localhost:8501
 echo   cat.bat --start docker [args]  # Starts CAT headless mode using Docker with [args]. Requires Docker installed.
-echo   cat.bat --plugin [list^|start ^<plugin^>^|docs ^<plugin^>]  # list plugins^|run ^<plugin^>^|show docs for ^<plugin^>
+echo   cat.bat --plugin ^<list^|start^|docs^> [name]    # list plugins ^| start plugin ^| show docs for plugin
 echo   cat.bat shutdown               # Stop container and processes
 echo.
 echo Arguments [args]:

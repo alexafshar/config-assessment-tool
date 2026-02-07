@@ -149,10 +149,10 @@ case "$1" in
   *)
     echo "Usage:"
     echo "  cat --start                # Starts CAT UI. Requires Python 3.12 and pipenv installed.  UI accessible at http://localhost:8501"
-    echo "  cat --start [args]         # Starts CAT headless mode from source with [args].  Requires Python 3.12 & pipenv installed".
+    echo "  cat --start [args]         # Starts CAT headless mode from source with [args].  Requires Python 3.12 & pipenv installed."
     echo "  cat --start docker         # Starts CAT UI using Docker. requires Docker. UI accessible at http://localhost:8501"
     echo "  cat --start docker [args]  # Starts CAT headless mode using Docker with [args]. Requires Docker installed."
-    echo "  cat --plugin [list|start <plugin>|docs <plugin>]  # list plugins|run <plugin>|show docs for <plugin>"
+    echo "  cat --plugin <list|start|docs> [name]    # list plugins | start plugin | show docs for plugin"
     echo "  cat shutdown               # Stop and remove the running container and FileHandler"
     echo ""
     echo "Arguments [args]:"
