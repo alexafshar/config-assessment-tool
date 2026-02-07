@@ -274,6 +274,11 @@ class Engine:
                 logging.debug(f"Plugin directory '{plugin_name}' exists but missing 'main.py'. Skipping.")
                 continue
 
+            requirements_file = os.path.join(plugin_path, "requirements.txt")
+            if os.path.exists(requirements_file):
+                logging.info(f"Loading plugin: {plugin_name}. Standalone plugin detected. Will not run this plugin as its not part of CAT tool lifecycle. You may launch separately.")
+                continue
+
             try:
                 logging.info(f"Loading plugin: {plugin_name}")
 
