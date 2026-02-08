@@ -11,7 +11,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-linux:
+  build-linux-multiarch:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -39,17 +39,27 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
+      # We build directly into the multi-arch tag here because it's efficient
+      # and avoids complex manifest merges for just Linux architectures.
+      # If we need to merge with Windows later, we can do that in a separate step or job
+      # but standardizing on this ensures Linux users get the right image immediately.
       - name: Build and push Linux image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64,linux/riscv64
+          platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-linux-multiarch:${{ steps.meta.outputs.version }}
+          # We tag it with both :vX.Y.Z (general tag) and :vX.Y.Z-linux (specific)
+          # The general tag might be overwritten by the manifest merge if we enable windows
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-linux:${{ steps.meta.outputs.version }}
           provenance: false
 
+  # Windows build is separate and less frequent, keeping it here but isolated
   build-windows:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-latest
     permissions:
       contents: read
@@ -76,9 +86,11 @@ jobs:
           docker build -f Dockerfile-windows -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-windows-amd64:${{ steps.meta.outputs.version }} .
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-windows-amd64:${{ steps.meta.outputs.version }}
 
+  # Optional: Manifest creation to join Linux and Windows under one tag if Windows ran
   merge-manifest:
+    needs: [build-linux-multiarch, build-windows]
+    if: success() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    needs: [build-linux, build-windows]
     permissions:
       packages: write
     steps:
@@ -97,19 +109,17 @@ jobs:
 
       - name: Create and push manifest list
         run: |
-          # Define image names
           BASE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
           TAG="${{ steps.meta.outputs.version }}"
           
-          echo "Creating manifest for tag: $TAG"
+          # We are merging the linux image (which is already multi-arch for linux)
+          # and the windows image.
+          # Note: Docker manifest create expects images to exist.
           
-          # Create manifest combining Linux and Windows images
+          echo "Creating manifest for tag: $TAG combining Linux and Windows..."
+          
           docker manifest create "${BASE_IMAGE}:${TAG}" \
-            "${BASE_IMAGE}-linux-amd64:${TAG}" \
+            "${BASE_IMAGE}-linux:${TAG}" \
             "${BASE_IMAGE}-windows-amd64:${TAG}"
             
-          # Annotate windows image (required to specify os version sometimes, but usually detected)
-          # We just push the manifest
           docker manifest push "${BASE_IMAGE}:${TAG}"
-          
-          echo "Successfully pushed multi-arch manifest: ${BASE_IMAGE}:${TAG}"
