@@ -5,6 +5,8 @@ FROM mcr.microsoft.com/windows/servercore:ltsc2022 AS base
 
 SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
+LABEL org.opencontainers.image.description ="Configuration Assessment Tool (CAT Windows version) is a comprehensive solution designed to evaluate and enhance the security of your software configurations. By analyzing configuration files, CAT identifies potential vulnerabilities and provides actionable recommendations to mitigate risks. With support for various configuration formats and integration capabilities, CAT empowers organizations to maintain secure and compliant configurations across their software ecosystems."
+
 ENV PYTHON_VERSION=3.12.3
 ENV PYTHON_HOME=C:\Python312
 ENV PYTHONDONTWRITEBYTECODE=1

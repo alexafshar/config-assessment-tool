@@ -2,6 +2,8 @@
 
 FROM python:3.12 AS base
 
+LABEL org.opencontainers.image.description "Configuration Assessment Tool (CAT) is a comprehensive solution designed to evaluate and enhance the security of your software configurations. By analyzing configuration files, CAT identifies potential vulnerabilities and provides actionable recommendations to mitigate risks. With support for various configuration formats and integration capabilities, CAT empowers organizations to maintain secure and compliant configurations across their software ecosystems."
+
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV PYTHONDONTWRITEBYTECODE=1
