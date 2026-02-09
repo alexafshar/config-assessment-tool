@@ -38,6 +38,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
 
       # We build directly into the multi-arch tag here because it's efficient
       # and avoids complex manifest merges for just Linux architectures.
@@ -50,11 +53,7 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          # We tag it with both :vX.Y.Z (general tag) and :vX.Y.Z-linux (specific)
-          # The general tag might be overwritten by the manifest merge if we enable windows
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-linux:${{ steps.meta.outputs.version }}
+          tags: ${{ steps.meta.outputs.tags }}
           provenance: false
 
   # Windows build is separate and less frequent, keeping it here but isolated
