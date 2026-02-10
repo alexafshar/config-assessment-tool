@@ -20,7 +20,7 @@ streamlit = "1.37.0"
 streamlit-modal = "*"
 deepdiff = ">=6.7.0"
 requests = ">=2.26.0"
-python-pptx = "==0.6.21"
+python-pptx = ">=1.0.2"
 altair = "==4.2.2"
 
 [dev-packages]

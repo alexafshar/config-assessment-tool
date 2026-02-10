@@ -2,7 +2,8 @@
 
 import os, sys
 from os import path
-site_packages = next(p for p in sys.path if 'site-packages' in p) # for pptx
+import pptx
+pptx_path = path.dirname(pptx.__file__)
 
 block_cipher = None
 bundle_name = "config-assessment-tool"
@@ -40,7 +41,7 @@ a = Analysis(
         ("../backend/resources/pptAssets/HybridApplicationMonitoringUseCase.json", "backend/resources/pptAssets"),
         ("../backend/resources/pptAssets/HybridApplicationMonitoringUseCase_template.pptx", "backend/resources/pptAssets"),
         ("../backend/resources/pptAssets/cxPpt_template.pptx", "backend/resources/pptAssets"),
-     	(path.join(site_packages,"pptx","templates"), "pptx/templates"), # for pptx
+     	(path.join(pptx_path,"templates"), "pptx/templates"), # for pptx
 
         # Config files previously handled by manual copy
         ("../input/jobs/DefaultJob.json", "input/jobs"),
