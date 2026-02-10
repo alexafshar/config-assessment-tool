@@ -1,5 +1,6 @@
 import logging
-import os.path
+import os
+import shutil
 
 import pandas as pd
 import xlsxwriter
@@ -14,8 +15,8 @@ dark_bg = '#000000'
 
 
 class ConfigurationAnalysisReport(PostProcessReport):
-
-    def __init__(self):
+    def __init__(self, output_dir="output"):
+        self.output_dir = output_dir
         self.workbook = None
         self.analysis_sheet = None
 
@@ -23,7 +24,7 @@ class ConfigurationAnalysisReport(PostProcessReport):
 
         logging.info(f"Running post-process command: Creating Configuration Analysis Workbook")
 
-        directory = f"output/{jobFileName}"
+        directory = os.path.join(self.output_dir, jobFileName)
         file_prefix = f"{jobFileName}"
         # input
         self.analysis_sheet = os.path.join(directory, f"{file_prefix}-MaturityAssessment-apm.xlsx")
@@ -34,7 +35,7 @@ class ConfigurationAnalysisReport(PostProcessReport):
             return
 
         # output
-        self.workbook = xlsxwriter.Workbook(f"output/{jobFileName}/{jobFileName}-ConfigurationAnalysisReport.xlsx")
+        self.workbook = xlsxwriter.Workbook(os.path.join(directory, f"{jobFileName}-ConfigurationAnalysisReport.xlsx"))
         worksheets = self.generateHeaders()
         applicationNames = self.getListOfApplications()
         applicationData = []

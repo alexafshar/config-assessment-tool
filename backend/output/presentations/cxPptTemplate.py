@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from datetime import datetime
 from enum import Enum
 from typing import List
@@ -208,7 +209,7 @@ def getAppsWithScore(sheet, assessmentScore):
             break
     return values
 
-def createCxPpt(folder: str):
+def createCxPpt(folder, output_dir="output"):
     logging.info(f"Creating presentation from template for output folder: {folder}")
 
     template_path = "backend/resources/pptAssets/cxPpt_template.pptx"
@@ -218,8 +219,20 @@ def createCxPpt(folder: str):
         logging.error(f"Failed to load template {template_path}: {e}")
         return
 
-    info = json.loads(open(f"output/{folder}/info.json").read())
-    wb = load_workbook(filename=f"output/{folder}/{folder}-MaturityAssessment-apm.xlsx")
+    job_dir = os.path.join(output_dir, folder)
+    info_path = os.path.join(job_dir, "info.json")
+    if not os.path.exists(info_path):
+        logging.warning(f"Info file {info_path} does not exist. Skipping PPT generation.")
+        return
+
+    info = json.loads(open(info_path).read())
+
+    ma_path = os.path.join(job_dir, f"{folder}-MaturityAssessment-apm.xlsx")
+    if not os.path.exists(ma_path):
+        logging.warning(f"Maturity Assessment file {ma_path} does not exist. Skipping PPT generation.")
+        return
+
+    wb = load_workbook(filename=ma_path)
     totalApplications = wb["Analysis"].max_row - 1
     sheet = wb["Analysis"]
     scores = getValuesInColumn(sheet, "OverallAssessment")
@@ -397,6 +410,6 @@ def createCxPpt(folder: str):
     # updateTitle(slide, "Appendix")
 
     # Saving file
-    output_path = f"output/{folder}/{folder}-cx-presentation.pptx"
+    output_path = os.path.join(job_dir, f"{folder}-cx-presentation.pptx")
+    logging.info(f"Saving presentation to {output_path}")
     root.save(output_path)
-    logging.info(f"Presentation saved to {output_path}")

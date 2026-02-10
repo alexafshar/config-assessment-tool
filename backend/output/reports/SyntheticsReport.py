@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 from datetime import datetime
 from math import floor, ceil
@@ -9,7 +10,7 @@ from util.excel_utils import addFilterAndFreeze, resizeColumnWidth, writeColored
 
 
 class SyntheticsReport(ReportBase):
-    def createWorkbook(self, jobs, controllerData, jobFileName):
+    def createWorkbook(self, jobs, controllerData, jobFileName, output_dir="output"):
         logging.info(f"Creating Synthetics Report Workbook")
 
         # Create Report with Raw Data
@@ -100,4 +101,5 @@ class SyntheticsReport(ReportBase):
         resizeColumnWidth(summarySheet)
 
         logging.debug(f"Saving Synthetics Workbook")
-        workbook.save(f"output/{jobFileName}/{jobFileName}-Synthetics.xlsx")
+        save_path = os.path.join(output_dir, jobFileName, f"{jobFileName}-Synthetics.xlsx")
+        workbook.save(save_path)

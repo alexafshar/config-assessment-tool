@@ -61,13 +61,20 @@ class Engine:
             # running as executable bundle
             path = sys._MEIPASS
             logging.info(f"Running as executable bundle, using {path} as root directory")
+            # When frozen, input/output are adjacent to the executable, outside _internal
+            # But sys.executable usually points to the bundle main executable
+            self.user_data_dir = os.path.dirname(sys.executable)
         else:
             # running from source/docker
             # cd to config-assessment-tool root directory
             path = os.path.realpath(f"{__file__}/../../..")
             logging.info(f"Running from source/docker, using {path} as root directory")
+            self.user_data_dir = path
 
         os.chdir(path)
+
+        self.input_dir = os.path.join(self.user_data_dir, "input")
+        self.output_dir = os.path.join(self.user_data_dir, "output")
 
         logging.info(f'\n{open(f"backend/resources/img/splash.txt").read()}')
         self.codebaseVersion = open(f"VERSION").read()
@@ -77,16 +84,21 @@ class Engine:
         # Validate jobFileName and thresholdFileName
         self.jobFileName = jobFileName
         self.thresholdsFileName = thresholdsFileName
-        if not Path(f"input/jobs/{self.jobFileName}.json").exists():
-            logging.error(f"Job file input/jobs/{self.jobFileName}.json does not exit. Aborting.")
+
+        job_file_path = os.path.join(self.input_dir, "jobs", f"{self.jobFileName}.json")
+        thresholds_file_path = os.path.join(self.input_dir, "thresholds", f"{self.thresholdsFileName}.json")
+        job_output_dir = os.path.join(self.output_dir, self.jobFileName)
+
+        if not Path(job_file_path).exists():
+            logging.error(f"Job file {job_file_path} does not exit. Aborting.")
             sys.exit(1)
-        if not Path(f"input/thresholds/{self.thresholdsFileName}.json").exists():
-            logging.error(f"Job file input/thresholds/{self.thresholdsFileName}.json does not exit. Aborting.")
+        if not Path(thresholds_file_path).exists():
+            logging.error(f"Job file {thresholds_file_path} does not exit. Aborting.")
             sys.exit(1)
-        if not os.path.exists(f"output/{self.jobFileName}"):
-            os.makedirs(f"output/{self.jobFileName}")
-        self.job = json.loads(open(f"input/jobs/{self.jobFileName}.json").read())
-        self.thresholds = json.loads(open(f"input/thresholds/{self.thresholdsFileName}.json").read())
+        if not os.path.exists(job_output_dir):
+            os.makedirs(job_output_dir)
+        self.job = json.loads(open(job_file_path).read())
+        self.thresholds = json.loads(open(thresholds_file_path).read())
 
         try:
             response = requests.request(
@@ -135,7 +147,7 @@ class Engine:
                 controller["timeRangeMins"] = 1440
 
         # Save the job back to disk with the updated password
-        with open(f"input/jobs/{jobFileName}.json", "w", encoding="ISO-8859-1") as f:
+        with open(os.path.join(self.input_dir, "jobs", f"{jobFileName}.json"), "w", encoding="ISO-8859-1") as f:
             json.dump(
                 self.job,
                 fp=f,
@@ -248,7 +260,7 @@ class Engine:
 
     async def runPlugins(self):
         logging.info(f"----------Plugins----------")
-        plugin_dir = "plugins"
+        plugin_dir = os.path.join(self.user_data_dir, "plugins")
         if not os.path.exists(plugin_dir):
             logging.info(f"No plugins directory found at {plugin_dir}")
             return
@@ -262,7 +274,7 @@ class Engine:
 
         context = {
             "jobFileName": self.jobFileName,
-            "outputDir": f"output/{self.jobFileName}",
+            "outputDir": os.path.join(self.output_dir, self.jobFileName),
             "controllerData": self.controllerData
         }
 
@@ -438,12 +450,15 @@ class Engine:
             jobStep.analyze(self.controllerData, self.thresholds)
 
         logging.info(f"----------Report----------")
+        job_output_dir = os.path.join(self.output_dir, self.jobFileName)
         for report in self.reports:
-            report.createWorkbook(self.maturityAssessmentSteps, self.controllerData, self.jobFileName)
+            report.createWorkbook(self.maturityAssessmentSteps, self.controllerData, self.jobFileName, self.output_dir)
 
     def finalize(self, startTime):
         now = int(time.time())
-        with open(f"output/{self.jobFileName}/info.json", "w", encoding="utf-8") as f:
+        job_output_dir = os.path.join(self.output_dir, self.jobFileName)
+
+        with open(os.path.join(job_output_dir, "info.json"), "w", encoding="utf-8") as f:
             json.dump(
                 {"lastRun": now, "thresholds": self.thresholdsFileName},
                 fp=f,
@@ -451,7 +466,7 @@ class Engine:
                 indent=4,
             )
 
-        with open(f"output/{self.jobFileName}/controllerData.json", "w", encoding="utf-8") as f:
+        with open(os.path.join(job_output_dir, "controllerData.json"), "w", encoding="utf-8") as f:
             json.dump(
                 self.controllerData,
                 fp=f,
@@ -460,13 +475,14 @@ class Engine:
             )
 
         # createCxPpt(self.jobFileName)
-        createCxPptTemplate(self.jobFileName)
-        createCxHamUseCasePpt(self.jobFileName)
+        createCxPptTemplate(self.jobFileName, self.output_dir)
+        createCxHamUseCasePpt(self.jobFileName, self.output_dir)
 
         logging.info(f"----------Complete----------")
         # if controllerData.json file exists, delete it
-        if Path(f"output/{self.jobFileName}/controllerData.json").exists():
-            sizeBytes = os.path.getsize(f"output/{self.jobFileName}/controllerData.json")
+        controller_data_path = os.path.join(job_output_dir, "controllerData.json")
+        if Path(controller_data_path).exists():
+            sizeBytes = os.path.getsize(controller_data_path)
             sizeName = ("B", "KB", "MB", "GB")
             i = int(math.floor(math.log(sizeBytes, 1024)))
             p = math.pow(1024, i)
@@ -506,10 +522,10 @@ class Engine:
          """
         logging.info(f"----------Post Process----------")
         commands = []
-        commands.append(ConfigurationAnalysisReport())
+        commands.append(ConfigurationAnalysisReport(self.output_dir))
 
         # after ALL reports generated archive a copy for safekeeping
-        commands.append(Archiver())
+        commands.append(Archiver(self.output_dir))
 
         for command in commands:
             if isinstance(command, PostProcessReport):

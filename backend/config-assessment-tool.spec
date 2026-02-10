@@ -3,6 +3,8 @@
 import os, sys
 from os import path
 import pptx
+import shutil
+
 pptx_path = path.dirname(pptx.__file__)
 
 block_cipher = None
@@ -48,6 +50,7 @@ a = Analysis(
         ("../input/thresholds/DefaultThresholds.json", "input/thresholds"),
         ("../backend/resources/controllerDefaults/defaultHealthRulesAPM.json", "backend/resources/controllerDefaults"),
         ("../backend/resources/controllerDefaults/defaultHealthRulesBRUM.json", "backend/resources/controllerDefaults"),
+        ("../plugins", "plugins"),
     ],
     hiddenimports=[],
     hookspath=[],
@@ -77,4 +80,32 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
-coll = COLLECT(exe, a.binaries, a.zipfiles, a.datas, strip=False, upx=True, upx_exclude=[], name=bundle_name)
+coll = COLLECT(exe, a.binaries, a.zipfiles, a.datas, strip=False, upx=True, upx_exclude=[], name=bundle_name, contents_directory='_internal')
+
+# Post-processing: Move 'input' directory out of '_internal' to the bundle root
+destination_dir = os.path.join(DISTPATH, bundle_name)
+internal_dir = os.path.join(destination_dir, '_internal')
+input_source = os.path.join(internal_dir, 'input')
+input_dest = os.path.join(destination_dir, 'input')
+
+if os.path.exists(input_source):
+    if os.path.exists(input_dest):
+        shutil.rmtree(input_dest)
+    shutil.move(input_source, input_dest)
+    print(f"Moved {input_source} to {input_dest}")
+
+# Post-processing: Move 'plugins' directory out of '_internal' to the bundle root
+plugins_source = os.path.join(internal_dir, 'plugins')
+plugins_dest = os.path.join(destination_dir, 'plugins')
+
+if os.path.exists(plugins_source):
+    if os.path.exists(plugins_dest):
+        shutil.rmtree(plugins_dest)
+    shutil.move(plugins_source, plugins_dest)
+    print(f"Moved {plugins_source} to {plugins_dest}")
+
+# Post-processing: Ensure 'output' directory exists in the bundle root
+output_dest = os.path.join(destination_dir, 'output')
+if not os.path.exists(output_dest):
+    os.makedirs(output_dest)
+    print(f"Created {output_dest}")

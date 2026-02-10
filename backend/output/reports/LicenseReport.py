@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+import os
 
 from openpyxl import Workbook
 from output.ReportBase import ReportBase
@@ -7,7 +8,7 @@ from util.excel_utils import Color, addFilterAndFreeze, resizeColumnWidth, write
 
 
 class LicenseReport(ReportBase):
-    def createWorkbook(self, jobs, controllerData, jobFileName):
+    def createWorkbook(self, jobs, controllerData, jobFileName, output_dir="output"):
         logging.info(f"Creating License Report Workbook")
 
         workbook = Workbook()
@@ -51,4 +52,5 @@ class LicenseReport(ReportBase):
         resizeColumnWidth(licenseSheet)
 
         logging.debug(f"Saving License Workbook")
-        workbook.save(f"output/{jobFileName}/{jobFileName}-License.xlsx")
+        save_path = os.path.join(output_dir, jobFileName, f"{jobFileName}-License.xlsx")
+        workbook.save(save_path)

@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+
 from collections import Counter
 from datetime import datetime
 
@@ -9,7 +11,7 @@ from util.excel_utils import addFilterAndFreeze, resizeColumnWidth, writeUncolor
 
 
 class AgentMatrixReport(ReportBase):
-    def createWorkbook(self, jobs, controllerData, jobFileName):
+    def createWorkbook(self, jobs, controllerData, jobFileName, output_dir="output"):
         logging.info(f"Creating Agent Matrix Report Workbook")
 
         workbook = Workbook()
@@ -248,4 +250,4 @@ class AgentMatrixReport(ReportBase):
             resizeColumnWidth(sheet)
 
         logging.debug(f"Saving AgentMatrix Workbook")
-        workbook.save(f"output/{jobFileName}/{jobFileName}-AgentMatrix.xlsx")
+        workbook.save(os.path.join(output_dir, jobFileName, f"{jobFileName}-AgentMatrix.xlsx"))

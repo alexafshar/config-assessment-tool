@@ -17,7 +17,8 @@ dark_bg = '#000000'
 
 class Archiver(PostProcessReport):
 
-    def __init__(self):
+    def __init__(self, output_base_dir="output"):
+        self.output_base_dir = output_base_dir
         self.workbook = None
         self.analysis_sheet = None
 
@@ -25,8 +26,8 @@ class Archiver(PostProcessReport):
         logging.info(f"Archiving generated report for job: {jobFileName}")
 
         # Define source and archive directories
-        source_directory = f"output/{jobFileName}"
-        archive_directory = "output/archive"
+        source_directory = os.path.join(self.output_base_dir, jobFileName)
+        archive_directory = os.path.join(self.output_base_dir, "archive")
 
         # Ensure the archive directory exists
         if not os.path.exists(archive_directory):

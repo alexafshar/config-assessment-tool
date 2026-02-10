@@ -37,7 +37,9 @@ help:
 	@echo "  run-backend                 - Run the non-UI version"
 	@echo "  build-image                 - Build a single Docker image using the root Dockerfile"
 	@echo "  build-multiarch-image       - Build and push a multi-architecture Docker image"
+	@echo "  exec-bundle                 - Create executable bundle for the current platform"
 	@echo "  install                     - Install Python dependencies"
+	@echo "  clean                       - Cleanup transitory directories used for build"
 
 run: $(LOG_DIR) $(OUTPUT_DIR)
 	PYTHONPATH=. $(PYTHON) bin/config-assessment-tool.py --run
@@ -147,3 +149,32 @@ lint:
 test:
 	@echo "Running tests..."
 	$(PYTHON) -m unittest discover -s tests -p "*.py"
+
+.PHONY: exec-bundle
+
+exec-bundle:
+	@echo "Installing dev dependencies (required for PyInstaller)..."
+	@if [ -f Pipfile ]; then \
+		$(PYTHON) -m pip install pipenv && pipenv install --dev; \
+		echo "Building with pipenv..."; \
+		pipenv run pyinstaller --clean --noconfirm --distpath=./dist/appdynamics backend/config-assessment-tool.spec; \
+	elif [ -f requirements.txt ]; then \
+		$(PYTHON) -m pip install -r requirements.txt; \
+		$(PYTHON) -m pip install pyinstaller; \
+		echo "Building with python..."; \
+		$(PYTHON) -m PyInstaller --clean --noconfirm --distpath=./dist/appdynamics backend/config-assessment-tool.spec; \
+	else \
+		echo "No Pipfile or requirements.txt found!"; \
+		exit 1; \
+	fi
+	@echo "Bundle created in dist/appdynamics"
+
+SHELL := /bin/bash
+
+.PHONY: clean
+
+clean:
+	@echo "Cleaning up..."
+	@rm -rf build dist .pytest_cache
+	@find . -type d -name "__pycache__" -exec rm -rf {} +
+	@echo "Clean complete."

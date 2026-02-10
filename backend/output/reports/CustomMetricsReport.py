@@ -1,4 +1,5 @@
 import logging
+import os
 
 from openpyxl import Workbook
 from output.ReportBase import ReportBase
@@ -6,8 +7,8 @@ from util.excel_utils import addFilterAndFreeze, resizeColumnWidth, writeColored
 
 
 class CustomMetricsReport(ReportBase):
-    def createWorkbook(self, jobs, controllerData, jobFileName):
-        logging.info(f"Creating Custom Metrics Workbook")
+    def createWorkbook(self, jobs, controllerData, jobFileName, output_dir="output"):
+        logging.info(f"Creating Custom Metrics Report Workbook")
 
         # Create Report with Raw Data
         workbook = Workbook()
@@ -54,4 +55,5 @@ class CustomMetricsReport(ReportBase):
         resizeColumnWidth(summarySheet)
 
         logging.debug(f"Saving CustomMetrics Workbook")
-        workbook.save(f"output/{jobFileName}/{jobFileName}-CustomMetrics.xlsx")
+        save_path = os.path.join(output_dir, jobFileName, f"{jobFileName}-CustomMetrics.xlsx")
+        workbook.save(save_path)
