@@ -80,14 +80,13 @@ RUN /usr/local/bin/python3.12 -m pip install --upgrade pip && \
     /usr/local/bin/python3.12 -m pip install pipx && \
     pipx install pipenv
 
-# Now use pipenv (in PATH) to generate requirements
-RUN pipenv requirements --dev > requirements.txt
-RUN /usr/local/bin/python3.12 -m pip install -r requirements.txt
-# Run PyInstaller using the module syntax to ensure we use the one installed in the global environment
-RUN /usr/local/bin/python3.12 -m PyInstaller --distpath=./dist/appdynamics backend/config-assessment-tool.spec
+# We need the makefile to be present before we run make exec-bundle
+COPY Makefile .
 
-# Copy plugins into the generated bundle directory
-RUN cp -r plugins dist/appdynamics/*/
+# Run make exec-bundle to build the executable
+# This uses the same target as development, ensuring consistency
+# We need to explicitly set PYTHON to the one we built
+RUN make exec-bundle PYTHON=/usr/local/bin/python3.12
 
 WORKDIR /root
 
