@@ -2,9 +2,9 @@ import json
 import logging
 from collections import OrderedDict
 
-from api.appd.AppDService import AppDService
+from backend.api.appd.AppDService import AppDService
 from deepdiff import DeepDiff
-from extractionSteps.JobStepBase import JobStepBase
+from backend.extractionSteps.JobStepBase import JobStepBase
 from util.asyncio_utils import AsyncioUtils
 
 

@@ -3,9 +3,12 @@
 import os, sys
 from os import path
 import pptx
+import streamlit
 import shutil
+from PyInstaller.utils.hooks import copy_metadata
 
 pptx_path = path.dirname(pptx.__file__)
+streamlit_path = path.dirname(streamlit.__file__)
 
 block_cipher = None
 bundle_name = "config-assessment-tool"
@@ -28,8 +31,8 @@ version = open("VERSION", "r").read().strip()
 bundle_name = f"{bundle_name}{platform}-{version}"
 
 a = Analysis(
-    ["../backend/backend.py"],
-    pathex=["./backend", "."],
+    ["../bin/bundle_main.py"],
+    pathex=[os.path.abspath(".")],
     binaries=platform_binaries,
     datas=[
         ("../backend/resources/img/splash.txt", "backend/resources/img"),
@@ -44,6 +47,7 @@ a = Analysis(
         ("../backend/resources/pptAssets/HybridApplicationMonitoringUseCase_template.pptx", "backend/resources/pptAssets"),
         ("../backend/resources/pptAssets/cxPpt_template.pptx", "backend/resources/pptAssets"),
      	(path.join(pptx_path,"templates"), "pptx/templates"), # for pptx
+        (path.join(streamlit_path, "static"), "streamlit/static"), # for streamlit
 
         # Config files previously handled by manual copy
         ("../input/jobs/DefaultJob.json", "input/jobs"),
@@ -51,8 +55,9 @@ a = Analysis(
         ("../backend/resources/controllerDefaults/defaultHealthRulesAPM.json", "backend/resources/controllerDefaults"),
         ("../backend/resources/controllerDefaults/defaultHealthRulesBRUM.json", "backend/resources/controllerDefaults"),
         ("../plugins", "plugins"),
-    ],
-    hiddenimports=[],
+        ("../frontend", "frontend"),
+    ] + copy_metadata('streamlit'),
+    hiddenimports=['streamlit.runtime.scriptrunner.magic_funcs', 'backend.util', 'backend.util.logging_utils', 'tzlocal', 'streamlit_modal', 'backend.core', 'backend.core.Engine', 'backend.api', 'backend.api.Result', 'backend.api.appd', 'backend.api.appd.AppDService', 'backend.api.appd.AppDController', 'backend.api.appd.AuthMethod', 'backend.extractionSteps', 'backend.extractionSteps.general', 'backend.extractionSteps.maturityAssessment'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

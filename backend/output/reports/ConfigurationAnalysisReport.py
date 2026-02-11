@@ -5,7 +5,7 @@ import shutil
 import pandas as pd
 import xlsxwriter
 
-from output.PostProcessReport import PostProcessReport
+from backend.output.PostProcessReport import PostProcessReport
 
 light_font = '#FFFFFF'
 dark_font = '#000000'

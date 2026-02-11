@@ -6,7 +6,7 @@ from datetime import datetime
 import pandas as pd
 import xlsxwriter
 
-from output.PostProcessReport import PostProcessReport
+from backend.output.PostProcessReport import PostProcessReport
 
 light_font = '#FFFFFF'
 dark_font = '#000000'
@@ -34,8 +34,8 @@ class Archiver(PostProcessReport):
             os.makedirs(archive_directory)
             logging.info(f"Created archive directory: {archive_directory}")
 
-        # Get current timestamp in the format mmddyyyy_HH_SS
-        timestamp = datetime.now().strftime("%m%d%Y_%H_%S")
+        # Get current timestamp in the format YYYYMMDD_HHMMSS
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         # Iterate through files in the source directory
         if os.path.exists(source_directory):

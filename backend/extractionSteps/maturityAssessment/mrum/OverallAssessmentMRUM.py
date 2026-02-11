@@ -1,7 +1,7 @@
 import logging
 from collections import OrderedDict
 
-from extractionSteps.JobStepBase import JobStepBase
+from backend.extractionSteps.JobStepBase import JobStepBase
 
 
 class OverallAssessmentMRUM(JobStepBase):

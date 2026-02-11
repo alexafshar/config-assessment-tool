@@ -61,8 +61,16 @@ def open_folder_via_service(path: str):
         logging.info("Running from source, opening folder directly: %s", path)
         try:
             abs_path = os.path.abspath(path)
+            if not os.path.exists(abs_path):
+                try:
+                    os.makedirs(abs_path)
+                    logging.info(f"Created directory: {abs_path}")
+                except OSError as e:
+                    st.error(f"Directory does not exist and could not be created: {abs_path} ({e})")
+                    return
+
             if not os.path.isdir(abs_path):
-                st.error(f"Directory does not exist: {abs_path}")
+                st.error(f"Path exists but is not a directory: {abs_path}")
                 return
 
             system = platform.system()

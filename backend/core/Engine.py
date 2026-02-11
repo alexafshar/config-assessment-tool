@@ -12,43 +12,43 @@ import importlib.util
 
 import requests
 
-from api.appd.AppDService import AppDService
-from api.appd.AuthMethod import AuthMethod
-from extractionSteps.general.ControllerLevelDetails import ControllerLevelDetails
-from extractionSteps.general.CustomMetrics import CustomMetrics
-from extractionSteps.general.Synthetics import Synthetics
-from extractionSteps.maturityAssessment.apm.AppAgentsAPM import AppAgentsAPM
-from extractionSteps.maturityAssessment.apm.BackendsAPM import BackendsAPM
-from extractionSteps.maturityAssessment.apm.BusinessTransactionsAPM import BusinessTransactionsAPM
-from extractionSteps.maturityAssessment.apm.DashboardsAPM import DashboardsAPM
-from extractionSteps.maturityAssessment.apm.DataCollectorsAPM import DataCollectorsAPM
-from extractionSteps.maturityAssessment.apm.ErrorConfigurationAPM import ErrorConfigurationAPM
-from extractionSteps.maturityAssessment.apm.HealthRulesAndAlertingAPM import HealthRulesAndAlertingAPM
-from extractionSteps.maturityAssessment.apm.MachineAgentsAPM import MachineAgentsAPM
-from extractionSteps.maturityAssessment.apm.OverallAssessmentAPM import OverallAssessmentAPM
-from extractionSteps.maturityAssessment.apm.OverheadAPM import OverheadAPM
-from extractionSteps.maturityAssessment.apm.ServiceEndpointsAPM import ServiceEndpointsAPM
-from extractionSteps.maturityAssessment.brum.HealthRulesAndAlertingBRUM import HealthRulesAndAlertingBRUM
-from extractionSteps.maturityAssessment.brum.NetworkRequestsBRUM import NetworkRequestsBRUM
-from extractionSteps.maturityAssessment.brum.OverallAssessmentBRUM import OverallAssessmentBRUM
-from extractionSteps.maturityAssessment.mrum.HealthRulesAndAlertingMRUM import HealthRulesAndAlertingMRUM
-from extractionSteps.maturityAssessment.mrum.NetworkRequestsMRUM import NetworkRequestsMRUM
-from extractionSteps.maturityAssessment.mrum.OverallAssessmentMRUM import OverallAssessmentMRUM
-from output.Archiver import Archiver
-from output.PostProcessReport import PostProcessReport
+from backend.api.appd.AppDService import AppDService
+from backend.api.appd.AuthMethod import AuthMethod
+from backend.extractionSteps.general.ControllerLevelDetails import ControllerLevelDetails
+from backend.extractionSteps.general.CustomMetrics import CustomMetrics
+from backend.extractionSteps.general.Synthetics import Synthetics
+from backend.extractionSteps.maturityAssessment.apm.AppAgentsAPM import AppAgentsAPM
+from backend.extractionSteps.maturityAssessment.apm.BackendsAPM import BackendsAPM
+from backend.extractionSteps.maturityAssessment.apm.BusinessTransactionsAPM import BusinessTransactionsAPM
+from backend.extractionSteps.maturityAssessment.apm.DashboardsAPM import DashboardsAPM
+from backend.extractionSteps.maturityAssessment.apm.DataCollectorsAPM import DataCollectorsAPM
+from backend.extractionSteps.maturityAssessment.apm.ErrorConfigurationAPM import ErrorConfigurationAPM
+from backend.extractionSteps.maturityAssessment.apm.HealthRulesAndAlertingAPM import HealthRulesAndAlertingAPM
+from backend.extractionSteps.maturityAssessment.apm.MachineAgentsAPM import MachineAgentsAPM
+from backend.extractionSteps.maturityAssessment.apm.OverallAssessmentAPM import OverallAssessmentAPM
+from backend.extractionSteps.maturityAssessment.apm.OverheadAPM import OverheadAPM
+from backend.extractionSteps.maturityAssessment.apm.ServiceEndpointsAPM import ServiceEndpointsAPM
+from backend.extractionSteps.maturityAssessment.brum.HealthRulesAndAlertingBRUM import HealthRulesAndAlertingBRUM
+from backend.extractionSteps.maturityAssessment.brum.NetworkRequestsBRUM import NetworkRequestsBRUM
+from backend.extractionSteps.maturityAssessment.brum.OverallAssessmentBRUM import OverallAssessmentBRUM
+from backend.extractionSteps.maturityAssessment.mrum.HealthRulesAndAlertingMRUM import HealthRulesAndAlertingMRUM
+from backend.extractionSteps.maturityAssessment.mrum.NetworkRequestsMRUM import NetworkRequestsMRUM
+from backend.extractionSteps.maturityAssessment.mrum.OverallAssessmentMRUM import OverallAssessmentMRUM
+from backend.output.Archiver import Archiver
+from backend.output.PostProcessReport import PostProcessReport
 # from output.presentations.cxPpt import createCxPpt
-from output.presentations.cxPptTemplate import createCxPpt as createCxPptTemplate
-from output.presentations.cxPptFsoUseCases import createCxHamUseCasePpt
-from output.reports.AgentMatrixReport import AgentMatrixReport
-from output.reports.ConfigurationAnalysisReport import ConfigurationAnalysisReport
-from output.reports.CustomMetricsReport import CustomMetricsReport
-from output.reports.DashboardReport import DashboardReport
-from output.reports.LicenseReport import LicenseReport
-from output.reports.MaturityAssessmentReport import MaturityAssessmentReport
-from output.reports.MaturityAssessmentReportRaw import RawMaturityAssessmentReport
-from output.reports.SyntheticsReport import SyntheticsReport
-from util.asyncio_utils import AsyncioUtils
-from util.stdlib_utils import base64Decode, base64Encode, isBase64, jsonEncoder
+from backend.output.presentations.cxPptTemplate import createCxPpt as createCxPptTemplate
+from backend.output.presentations.cxPptFsoUseCases import createCxHamUseCasePpt
+from backend.output.reports.AgentMatrixReport import AgentMatrixReport
+from backend.output.reports.ConfigurationAnalysisReport import ConfigurationAnalysisReport
+from backend.output.reports.CustomMetricsReport import CustomMetricsReport
+from backend.output.reports.DashboardReport import DashboardReport
+from backend.output.reports.LicenseReport import LicenseReport
+from backend.output.reports.MaturityAssessmentReport import MaturityAssessmentReport
+from backend.output.reports.MaturityAssessmentReportRaw import RawMaturityAssessmentReport
+from backend.output.reports.SyntheticsReport import SyntheticsReport
+from backend.util.asyncio_utils import AsyncioUtils
+from backend.util.stdlib_utils import base64Decode, base64Encode, isBase64, jsonEncoder
 
 
 class Engine:
@@ -516,10 +516,6 @@ class Engine:
             sys.exit(0)
 
     async def postProcess(self):
-        """Post-processing reports that rely on the core generated excel reports.
-        Currently, for CAR(configuration analysis report) that consumes the core
-        reports post process
-         """
         logging.info(f"----------Post Process----------")
         commands = []
         commands.append(ConfigurationAnalysisReport(self.output_dir))
@@ -528,7 +524,6 @@ class Engine:
         commands.append(Archiver(self.output_dir))
 
         for command in commands:
-            if isinstance(command, PostProcessReport):
-                await command.post_process(self.jobFileName)
+            await command.post_process(self.jobFileName)
 
         logging.info(f"----------Post Process Done----------")

@@ -54,4 +54,5 @@ jobs:
         with:
           name: ${{ env.BUNDLE_NAME }} # Use the exact bundle name for the artifact
           path: ./${{ env.BUNDLE_NAME }} # Specify the full path to the bundle
+          compression-level: 0 # The .tgz is already compressed, no need to compress again
           if-no-files-found: ignore

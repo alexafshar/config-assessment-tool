@@ -3,9 +3,9 @@ import logging
 import sys
 
 import click
-from core.Engine import Engine
-from util.click_utils import coro
-from util.logging_utils import initLogging
+from backend.core.Engine import Engine
+from backend.util.click_utils import coro
+from backend.util.logging_utils import initLogging
 
 
 @click.command()

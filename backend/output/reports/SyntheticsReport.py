@@ -5,8 +5,8 @@ from datetime import datetime
 from math import floor, ceil
 
 from openpyxl import Workbook
-from output.ReportBase import ReportBase
-from util.excel_utils import addFilterAndFreeze, resizeColumnWidth, writeColoredRow, writeSummarySheet, writeUncoloredRow, Color
+from backend.output.ReportBase import ReportBase
+from backend.util.excel_utils import addFilterAndFreeze, resizeColumnWidth, writeColoredRow, writeSummarySheet, writeUncoloredRow, Color
 
 
 class SyntheticsReport(ReportBase):

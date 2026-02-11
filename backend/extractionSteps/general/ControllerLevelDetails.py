@@ -1,8 +1,8 @@
 import logging
 from collections import OrderedDict
 
-from api.appd.AppDService import AppDService
-from extractionSteps.JobStepBase import JobStepBase
+from backend.api.appd.AppDService import AppDService
+from backend.extractionSteps.JobStepBase import JobStepBase
 
 
 class ControllerLevelDetails(JobStepBase):

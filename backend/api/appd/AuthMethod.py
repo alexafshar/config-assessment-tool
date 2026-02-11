@@ -8,10 +8,10 @@ import aiohttp
 from uplink import AiohttpClient
 from uplink.auth import BasicAuth, BearerToken
 
-from api.Result import Result
-from api.appd.AppDController import AppdController
-from util.asyncio_utils import AsyncioUtils
-from util.logging_utils import initLogging
+from backend.api.Result import Result
+from backend.api.appd.AppDController import AppdController
+from backend.util.asyncio_utils import AsyncioUtils
+from backend.util.logging_utils import initLogging
 
 
 class AuthMethod():

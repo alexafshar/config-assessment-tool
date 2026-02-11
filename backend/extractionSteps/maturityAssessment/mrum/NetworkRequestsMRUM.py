@@ -2,8 +2,8 @@ import logging
 from collections import OrderedDict
 from itertools import count
 
-from api.appd.AppDService import AppDService
-from extractionSteps.JobStepBase import JobStepBase
+from backend.api.appd.AppDService import AppDService
+from backend.extractionSteps.JobStepBase import JobStepBase
 from util.asyncio_utils import AsyncioUtils
 
 

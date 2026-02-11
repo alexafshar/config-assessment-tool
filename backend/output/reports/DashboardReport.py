@@ -4,8 +4,8 @@ import os
 from datetime import datetime
 from openpyxl import Workbook
 
-from output.ReportBase import ReportBase
-from util.excel_utils import Color, addFilterAndFreeze, resizeColumnWidth, writeRow, writeUncoloredRow
+from backend.output.ReportBase import ReportBase
+from backend.util.excel_utils import Color, addFilterAndFreeze, resizeColumnWidth, writeRow, writeUncoloredRow
 
 
 class DashboardReport(ReportBase):

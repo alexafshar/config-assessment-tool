@@ -65,7 +65,7 @@ run-backend: install
 		echo "";\
 	else \
 		if [ -f $(INPUT_FILE) ]; then \
-			pipenv run $(PYTHON) $(BACKEND_SCRIPT) $(ARGS); \
+			PYTHONPATH=. pipenv run $(PYTHON) $(BACKEND_SCRIPT) $(ARGS); \
 		else \
 			echo "Input file '$(INPUT_FILE)' not found. Please ensure it exists."; \
 			exit 1; \

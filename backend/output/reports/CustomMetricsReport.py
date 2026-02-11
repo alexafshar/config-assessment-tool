@@ -2,8 +2,8 @@ import logging
 import os
 
 from openpyxl import Workbook
-from output.ReportBase import ReportBase
-from util.excel_utils import addFilterAndFreeze, resizeColumnWidth, writeColoredRow, writeSummarySheet, writeUncoloredRow
+from backend.output.ReportBase import ReportBase
+from backend.util.excel_utils import addFilterAndFreeze, resizeColumnWidth, writeColoredRow, writeSummarySheet, writeUncoloredRow
 
 
 class CustomMetricsReport(ReportBase):

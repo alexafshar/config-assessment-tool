@@ -20,6 +20,16 @@ from utils.streamlit_utils import rerun
 
 def run_backend_process(job_details):
     """Target function for the separate process to run the backend engine."""
+
+    # Ensure sys.path includes the backend directory when running in a subprocess within the frozen bundle.
+    # This mirrors the logic in bundle_main.py to ensure top-level imports like 'api' work.
+    import sys
+    import os
+    if getattr(sys, 'frozen', False):
+        backend_path = os.path.join(sys._MEIPASS, 'backend')
+        if backend_path not in sys.path:
+            sys.path.append(backend_path)
+
     # This function runs in a completely separate process.
     # We need to re-import and initialize everything it needs.
     from backend.core.Engine import Engine
