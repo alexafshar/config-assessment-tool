@@ -109,6 +109,8 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
+            type=ref,event=branch
+            type=ref,event=pr
 
       - name: Create and push manifest list
         run: |
