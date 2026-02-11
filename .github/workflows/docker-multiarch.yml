@@ -38,14 +38,14 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Generate ONLY platform-specific tags here.
+          # We do NOT push 'latest' or the bare version 'v1.2.3' in this job.
+          # Those are reserved for the final merge step to avoid race conditions.
           tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
+            type=semver,pattern={{version}},suffix=-linux
+            type=ref,event=branch,suffix=-linux
 
-      # We build directly into the multi-arch tag here because it's efficient
-      # and avoids complex manifest merges for just Linux architectures.
-      # If we need to merge with Windows later, we can do that in a separate step or job
-      # but standardizing on this ensures Linux users get the right image immediately.
+      # We build directly into the multi-arch tag here.
       - name: Build and push Linux image
         uses: docker/build-push-action@v6
         with:
@@ -80,12 +80,13 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
+      # Standardize on -windows suffix for consistent intermediary tags
       - name: Build and push Windows image
         run: |
-          docker build -f Dockerfile-windows -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-windows-amd64:${{ steps.meta.outputs.version }} .
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-windows-amd64:${{ steps.meta.outputs.version }}
+          docker build -f Dockerfile-windows -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}-windows .
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}-windows
 
-  # Optional: Manifest creation to join Linux and Windows under one tag if Windows ran
+  # Manifest creation: This is the ONLY place where user-facing tags (v1.2.3, latest) are pushed.
   merge-manifest:
     needs: [build-linux-multiarch, build-windows]
     if: success() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -105,20 +106,37 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
 
       - name: Create and push manifest list
         run: |
-          BASE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          TAG="${{ steps.meta.outputs.version }}"
+          # Define image references
+          IMAGE_ROOT="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          VERSION="${{ steps.meta.outputs.version }}"
           
-          # We are merging the linux image (which is already multi-arch for linux)
-          # and the windows image.
-          # Note: Docker manifest create expects images to exist.
+          LINUX_IMAGE="${IMAGE_ROOT}:${VERSION}-linux"
+          WINDOWS_IMAGE="${IMAGE_ROOT}:${VERSION}-windows"
           
-          echo "Creating manifest for tag: $TAG combining Linux and Windows..."
+          # Tags to generate (v1.8.1 and latest)
+          # The steps.meta.outputs.tags is newline separated, we need to iterate or simplify
+          # For robustness, we will manually reconstruct the target tags based on Metadata logic
           
-          docker manifest create "${BASE_IMAGE}:${TAG}" \
-            "${BASE_IMAGE}-linux:${TAG}" \
-            "${BASE_IMAGE}-windows-amd64:${TAG}"
-            
-          docker manifest push "${BASE_IMAGE}:${TAG}"
+          TARGET_TAG="${IMAGE_ROOT}:${VERSION}"
+          LATEST_TAG="${IMAGE_ROOT}:latest"
+          
+          echo "Creating manifest list..."
+          echo "  Primary: $TARGET_TAG"
+          echo "  Sources: $LINUX_IMAGE, $WINDOWS_IMAGE"
+          
+          # Create and Push the semantic version tag (e.g. v1.8.1)
+          docker manifest create "$TARGET_TAG" "$LINUX_IMAGE" "$WINDOWS_IMAGE"
+          docker manifest push "$TARGET_TAG"
+          
+          # Create and Push 'latest' if this is a tag push
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+             echo "  Also updating 'latest' tag..."
+             docker manifest create "$LATEST_TAG" "$LINUX_IMAGE" "$WINDOWS_IMAGE"
+             docker manifest push "$LATEST_TAG"
+          fi
