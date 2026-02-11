@@ -118,13 +118,12 @@ jobs:
           IMAGE_ROOT="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
           VERSION="${{ steps.meta.outputs.version }}"
           
+          # The linux image is already a multi-arch manifest list (amd64/arm64)
+          # We need to reference it properly. 'docker manifest create' supports source manifests being lists.
           LINUX_IMAGE="${IMAGE_ROOT}:${VERSION}-linux"
           WINDOWS_IMAGE="${IMAGE_ROOT}:${VERSION}-windows"
           
           # Tags to generate (v1.8.1 and latest)
-          # The steps.meta.outputs.tags is newline separated, we need to iterate or simplify
-          # For robustness, we will manually reconstruct the target tags based on Metadata logic
-          
           TARGET_TAG="${IMAGE_ROOT}:${VERSION}"
           LATEST_TAG="${IMAGE_ROOT}:latest"
           
@@ -132,13 +131,13 @@ jobs:
           echo "  Primary: $TARGET_TAG"
           echo "  Sources: $LINUX_IMAGE, $WINDOWS_IMAGE"
           
-          # Create and Push the semantic version tag (e.g. v1.8.1)
-          docker manifest create "$TARGET_TAG" "$LINUX_IMAGE" "$WINDOWS_IMAGE"
+          # Use --amend to safely merge existing manifests/lists
+          docker manifest create "$TARGET_TAG" --amend "$LINUX_IMAGE" --amend "$WINDOWS_IMAGE"
           docker manifest push "$TARGET_TAG"
           
           # Create and Push 'latest' if this is a tag push
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
              echo "  Also updating 'latest' tag..."
-             docker manifest create "$LATEST_TAG" "$LINUX_IMAGE" "$WINDOWS_IMAGE"
+             docker manifest create "$LATEST_TAG" --amend "$LINUX_IMAGE" --amend "$WINDOWS_IMAGE"
              docker manifest push "$LATEST_TAG"
           fi
