@@ -132,12 +132,24 @@ jobs:
           echo "  Sources: $LINUX_IMAGE, $WINDOWS_IMAGE"
           
           # Use --amend to safely merge existing manifests/lists
-          docker manifest create "$TARGET_TAG" --amend "$LINUX_IMAGE" --amend "$WINDOWS_IMAGE"
-          docker manifest push "$TARGET_TAG"
+          # IMPORTANT: When source images are manifest lists (like our linux multi-arch image),
+          # docker manifest create with --amend might still check architecture compatibility or fail if it expects simple images.
+          # However, the error "is a manifest list" usually implies we are trying to add a list as if it were a single layer.
+          # The correct way to merge manifest lists is often complex or requires referencing specific digests if 'create' fails.
+          # But actually, 'docker manifest create' simply doesn't support recursive manifest lists (manifest list inside manifest list) well in older versions or specific registry implementations.
+          # A common workaround is to reference the underlying architecture specific images, OR use a tool like 'imagetools' from buildx
+          # BUT, let's try the syntax that supports lists by NOT using 'create' but using 'docker buildx imagetools create'.
+          
+          echo "Using docker buildx imagetools create to merge manifests..."
+          
+          docker buildx imagetools create -t "$TARGET_TAG" \
+            "$LINUX_IMAGE" \
+            "$WINDOWS_IMAGE"
           
           # Create and Push 'latest' if this is a tag push
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
              echo "  Also updating 'latest' tag..."
-             docker manifest create "$LATEST_TAG" --amend "$LINUX_IMAGE" --amend "$WINDOWS_IMAGE"
-             docker manifest push "$LATEST_TAG"
+             docker buildx imagetools create -t "$LATEST_TAG" \
+               "$LINUX_IMAGE" \
+               "$WINDOWS_IMAGE"
           fi
