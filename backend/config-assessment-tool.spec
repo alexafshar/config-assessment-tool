@@ -5,10 +5,30 @@ from os import path
 import pptx
 import streamlit
 import shutil
+import ctypes.util
+import subprocess
 from PyInstaller.utils.hooks import copy_metadata
 
 pptx_path = path.dirname(pptx.__file__)
 streamlit_path = path.dirname(streamlit.__file__)
+
+def find_library_path(name):
+    # Try using ctypes first
+    path = ctypes.util.find_library(name)
+    if path:
+        # ctypes returns the filename (e.g., libcrypt.so.1), we need full path
+        if os.path.exists(path):
+            return path
+        try:
+             # Run ldconfig to find the path (Linux specific)
+            res = subprocess.check_output(f"/sbin/ldconfig -p | grep {path}", shell=True)
+            # Parse output: "libcrypt.so.1 (libc6,x86-64) => /lib/x86_64-linux-gnu/libcrypt.so.1"
+            for line in res.decode().split('\n'):
+                if path in line and "=>" in line:
+                    return line.split("=>")[1].strip()
+        except Exception:
+            pass
+    return None
 
 block_cipher = None
 bundle_name = "config-assessment-tool"
@@ -21,7 +41,15 @@ if sys.platform == "win32":
     exec_file_name = f"{bundle_name}.exe"
 elif sys.platform == "linux":
     platform = "-linux"
-    platform_binaries=[('/usr/local/lib/libcrypt.so.2','.')]
+    # Find libcrypt dynamically instead of hardcoding
+    libcrypt_path = find_library_path('crypt')
+    if libcrypt_path and os.path.exists(libcrypt_path):
+        print(f"Found libcrypt at: {libcrypt_path}")
+        platform_binaries=[(libcrypt_path, '.')]
+    else:
+        print("Warning: libcrypt not found via ctypes/ldconfig. Relying on PyInstaller automatic collection or manual adding later if failed.")
+        # Fallback to hardcoded if we want, or empty list. The previous hardcoded value was causing errors.
+        # platform_binaries=[('/usr/local/lib/libcrypt.so.2','.')]
 elif sys.platform == "darwin":
     platform = "-macosx"
 else:
