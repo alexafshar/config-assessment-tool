@@ -24,7 +24,9 @@ fi
 
 if [ "$1" = "backend" ]; then
   shift
-  exec python backend/backend.py "$@"
+  # Fix ModuleNotFoundError: Add current dir (/app) to path so 'import backend' finds the package, not the script
+  export PYTHONPATH=$PYTHONPATH:$(pwd)
+  exec python bin/bundle_main.py "$@"
 elif [ "$1" = "ui" ]; then
   shift
   exec streamlit run frontend/frontend.py "$@"
