@@ -4,6 +4,9 @@ from collections import OrderedDict
 from backend.extractionSteps.JobStepBase import JobStepBase
 
 
+logger = logging.getLogger(__name__.split('.')[-1])
+
+
 class OverallAssessmentAPM(JobStepBase):
     def __init__(self):
         super().__init__("apm")
@@ -37,7 +40,7 @@ class OverallAssessmentAPM(JobStepBase):
         jobStepThresholds = thresholds[self.componentType][jobStepName]
 
         for host, hostInfo in controllerData.items():
-            logging.info(f'{hostInfo["controller"].host} - Analyzing {jobStepName}')
+            logger.info(f'{hostInfo["controller"].host} - Analyzing {jobStepName}')
 
             for application in hostInfo[self.componentType].values():
 

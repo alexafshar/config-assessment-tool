@@ -7,6 +7,9 @@ from util.asyncio_utils import AsyncioUtils
 from util.stdlib_utils import substringBetween
 
 
+logger = logging.getLogger(__name__.split('.')[-1])
+
+
 class BackendsAPM(JobStepBase):
     def __init__(self):
         super().__init__("apm")
@@ -23,7 +26,7 @@ class BackendsAPM(JobStepBase):
 
         backendNameToCallsPerMinuteMap = {}
         for host, hostInfo in controllerData.items():
-            logging.info(f'{hostInfo["controller"].host} - Extracting {jobStepName}')
+            logger.info(f'{hostInfo["controller"].host} - Extracting {jobStepName}')
             controller: AppDService = hostInfo["controller"]
 
             # Gather necessary metrics.
@@ -77,7 +80,7 @@ class BackendsAPM(JobStepBase):
                         backend["callsPerMinute"] = backendNameToCallsPerMinuteMap[backend["name"]]
                     except KeyError:
                         backend["callsPerMinute"] = 0
-                        logging.debug(f'{hostInfo["controller"].host} - Node: {backend["name"]} returned no metric data for Agent Availability.')
+                        logger.debug(f'{hostInfo["controller"].host} - Node: {backend["name"]} returned no metric data for Agent Availability.')
 
     def analyze(self, controllerData, thresholds):
         """
@@ -93,7 +96,7 @@ class BackendsAPM(JobStepBase):
         jobStepThresholds = thresholds[self.componentType][jobStepName]
 
         for host, hostInfo in controllerData.items():
-            logging.info(f'{hostInfo["controller"].host} - Analyzing {jobStepName}')
+            logger.info(f'{hostInfo["controller"].host} - Analyzing {jobStepName}')
 
             for application in hostInfo[self.componentType].values():
                 # Root node of current application for current JobStep.
@@ -123,7 +126,7 @@ class BackendsAPM(JobStepBase):
                         )["value"]
                     )
                 except StopIteration:
-                    logging.warning(f'{hostInfo["controller"].host} - '
+                    logger.warning(f'{hostInfo["controller"].host} - '
                                     f'backend.registration.limit '
                                     f'configuration not found for'
                                     f' {application["name"]}. Use default.')

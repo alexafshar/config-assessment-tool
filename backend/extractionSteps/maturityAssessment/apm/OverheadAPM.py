@@ -6,6 +6,9 @@ from backend.extractionSteps.JobStepBase import JobStepBase
 from util.asyncio_utils import AsyncioUtils
 
 
+logger = logging.getLogger(__name__.split('.')[-1])
+
+
 class OverheadAPM(JobStepBase):
     def __init__(self):
         super().__init__("apm")
@@ -21,7 +24,7 @@ class OverheadAPM(JobStepBase):
         jobStepName = type(self).__name__
 
         for host, hostInfo in controllerData.items():
-            logging.info(f'{hostInfo["controller"].host} - Extracting {jobStepName}')
+            logger.info(f'{hostInfo["controller"].host} - Extracting {jobStepName}')
             controller: AppDService = hostInfo["controller"]
 
             # Gather necessary metrics.
@@ -64,7 +67,7 @@ class OverheadAPM(JobStepBase):
         jobStepThresholds = thresholds[self.componentType][jobStepName]
 
         for host, hostInfo in controllerData.items():
-            logging.info(f'{hostInfo["controller"].host} - Analyzing {jobStepName}')
+            logger.info(f'{hostInfo["controller"].host} - Analyzing {jobStepName}')
 
             for application in hostInfo[self.componentType].values():
                 # Root node of current application for current JobStep.

@@ -276,7 +276,18 @@ def jobHandler(jobName: str, debug: bool, concurrentConnections: int):
         if "----------Complete----------" in log_peek:
             modal_title = "Log output for config-assessment-tool. JOB FINISHED! You may close the window"
 
-    log_modal = Modal(modal_title, key=f"logs-modal-{jobName}", max_width=1000)
+    log_modal = Modal(modal_title, key=f"logs-modal-{jobName}", max_width=5000)
+
+    # CSS to force the modal to 90% of screen width
+    st.markdown("""
+        <style>
+        div[data-modal-container='true'] > div:first-child {
+            width: 90vw !important;
+            max-width: 90vw !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     if st.button("Show Logs", key=f"show-logs-{jobName}"):
         log_modal.open()
 
@@ -321,7 +332,7 @@ def jobHandler(jobName: str, debug: bool, concurrentConnections: int):
                 log_content = tail_file(log_file, num_lines)
 
                 # Log container HTML
-                log_html = f'<div id="{log_container_id}" style="height: 400px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; background-color: #f0f2f6; font-family: monospace; white-space: pre-wrap; font-size: 60%;">{log_content}</div>'
+                log_html = f'<div id="{log_container_id}" style="height: 400px; overflow-y: scroll; overflow-x: auto; border: 1px solid #ccc; padding: 10px; background-color: #f0f2f6; font-family: monospace; white-space: pre; font-size: 7px !important; line-height: 1.2 !important;">{log_content}</div>'
                 log_placeholder.markdown(log_html, unsafe_allow_html=True)
 
                 if auto_scroll:

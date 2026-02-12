@@ -50,6 +50,7 @@ from backend.output.reports.SyntheticsReport import SyntheticsReport
 from backend.util.asyncio_utils import AsyncioUtils
 from backend.util.stdlib_utils import base64Decode, base64Encode, isBase64, jsonEncoder
 
+logger = logging.getLogger(__name__.split('.')[-1])
 
 class Engine:
     def __init__(self, jobFileName: str, thresholdsFileName: str, concurrentConnections: int, user_name: str, password: str, auth_method : str):
@@ -60,7 +61,7 @@ class Engine:
         if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
             # running as executable bundle
             path = sys._MEIPASS
-            logging.info(f"Running as executable bundle, using {path} as root directory")
+            logger.info(f"Running as executable bundle, using {path} as root directory")
             # When frozen, input/output are adjacent to the executable, outside _internal
             # But sys.executable usually points to the bundle main executable
             self.user_data_dir = os.path.dirname(sys.executable)
@@ -68,7 +69,7 @@ class Engine:
             # running from source/docker
             # cd to config-assessment-tool root directory
             path = os.path.realpath(f"{__file__}/../../..")
-            logging.info(f"Running from source/docker, using {path} as root directory")
+            logger.info(f"Running from source/docker, using {path} as root directory")
             self.user_data_dir = path
 
         os.chdir(path)
@@ -76,9 +77,9 @@ class Engine:
         self.input_dir = os.path.join(self.user_data_dir, "input")
         self.output_dir = os.path.join(self.user_data_dir, "output")
 
-        logging.info(f'\n{open(f"backend/resources/img/splash.txt").read()}')
+        logger.info(f'\n{open(f"backend/resources/img/splash.txt").read()}')
         self.codebaseVersion = open(f"VERSION").read().strip()
-        logging.info(f"Running Software Version: {self.codebaseVersion}")
+        logger.info(f"Running Software Version: {self.codebaseVersion}")
 
 
         # Validate jobFileName and thresholdFileName
@@ -90,10 +91,10 @@ class Engine:
         job_output_dir = os.path.join(self.output_dir, self.jobFileName)
 
         if not Path(job_file_path).exists():
-            logging.error(f"Job file {job_file_path} does not exit. Aborting.")
+            logger.error(f"Job file {job_file_path} does not exit. Aborting.")
             sys.exit(1)
         if not Path(thresholds_file_path).exists():
-            logging.error(f"Job file {thresholds_file_path} does not exit. Aborting.")
+            logger.error(f"Job file {thresholds_file_path} does not exit. Aborting.")
             sys.exit(1)
         if not os.path.exists(job_output_dir):
             os.makedirs(job_output_dir)
@@ -109,21 +110,21 @@ class Engine:
             )
             latestTag = None
             if not response.ok:
-                logging.warning(f"Unable to get latest tag from https://api.github.com/repos/appdynamics/config-assessment-tool/tags")
+                logger.warning(f"Unable to get latest tag from https://api.github.com/repos/appdynamics/config-assessment-tool/tags")
             else:
                 latestTag = json.loads(response.text)[0]["name"]
                 if latestTag != self.codebaseVersion:
-                    logging.warning(f"You are using an outdated version of the software. Current {self.codebaseVersion} Latest {latestTag}")
-                    logging.warning("You can get the latest version from https://github.com/Appdynamics/config-assessment-tool/releases")
+                    logger.warning(f"You are using an outdated version of the software. Current {self.codebaseVersion} Latest {latestTag}")
+                    logger.warning("You can get the latest version from https://github.com/Appdynamics/config-assessment-tool/releases")
         except requests.exceptions.RequestException:
-            logging.warning(f"Unable to get latest tag from https://api.github.com/repos/appdynamics/config-assessment-tool/tags")
+            logger.warning(f"Unable to get latest tag from https://api.github.com/repos/appdynamics/config-assessment-tool/tags")
 
         # Default concurrent connections to 10 for On-Premise controllers
         if any(job for job in self.job if "saas.appdynamics.com" not in job["host"]):
-            logging.info(f"On-Premise controller detected. It is recommended to use a maximum of 10 concurrent connections.")
+            logger.info(f"On-Premise controller detected. It is recommended to use a maximum of 10 concurrent connections.")
             concurrentConnections = 10 if concurrentConnections is None else concurrentConnections
         else:
-            logging.info(f"SaaS controller detected. It is recommended to use a maximum of 50 concurrent connections.")
+            logger.info(f"SaaS controller detected. It is recommended to use a maximum of 50 concurrent connections.")
             concurrentConnections = 50 if concurrentConnections is None else concurrentConnections
         AsyncioUtils.init(concurrentConnections)
 
@@ -158,14 +159,14 @@ class Engine:
         for controller in self.job:
 
             if controller.get("authType") is None:
-                logging.warn(f'\'authType\' is not '
+                logger.warn(f'\'authType\' is not '
                              f'specified for host {controller["host"]} in '
                              f'the input job file. Will '
                              f'default to basic authentication for '
                              f'backward compatibility.')
                 controller["authType"] = "basic"
 
-            logging.debug(
+            logger.debug(
                 f'authenticationMethod: {controller["authType"]} '
                 f'for host {controller["host"]}')
 
@@ -196,9 +197,9 @@ class Engine:
 
 
         if password:  # I will let it here until it's the final version, so that we will
-            logging.info("Dynamic password change was used!")  # have confirmation, that it's working as intended
+            logger.info("Dynamic password change was used!")  # have confirmation, that it's working as intended
         else:
-            logging.info("Using password from jobfile")
+            logger.info("Using password from jobfile")
 
         self.controllerData = OrderedDict()
         self.otherSteps = [
@@ -250,7 +251,7 @@ class Engine:
             self.finalize(startTime)
         except Exception as e:
             # catch exceptions here, so we can terminate coroutines before program exit
-            logging.error("".join(traceback.TracebackException.from_exception(e).format()))
+            logger.error("".join(traceback.TracebackException.from_exception(e).format()))
 
         await self.abortAndCleanup(
             "JOB FINISHED. IF USING WEB UI, YOU MAY CLOSE THIS MODAL WINDOW.",
@@ -259,17 +260,17 @@ class Engine:
 
 
     async def runPlugins(self):
-        logging.info(f"----------Plugins----------")
+        logger.info(f"----------Plugins----------")
         plugin_dir = os.path.join(self.user_data_dir, "plugins")
         if not os.path.exists(plugin_dir):
-            logging.info(f"No plugins directory found at {plugin_dir}")
+            logger.info(f"No plugins directory found at {plugin_dir}")
             return
 
         # List subdirectories in plugins dir (ignoring files)
         plugin_folders = [d for d in os.listdir(plugin_dir) if os.path.isdir(os.path.join(plugin_dir, d)) and not d.startswith('__')]
 
         if not plugin_folders:
-            logging.info("No plugin directories found.")
+            logger.info("No plugin directories found.")
             return
 
         context = {
@@ -283,21 +284,21 @@ class Engine:
             main_file = os.path.join(plugin_path, "main.py")
 
             if not os.path.exists(main_file):
-                logging.debug(f"Plugin directory '{plugin_name}' exists but missing 'main.py'. Skipping.")
+                logger.debug(f"Plugin directory '{plugin_name}' exists but missing 'main.py'. Skipping.")
                 continue
 
             requirements_file = os.path.join(plugin_path, "requirements.txt")
             if os.path.exists(requirements_file):
-                logging.info(f"Loading plugin: {plugin_name}. Standalone plugin detected. Will not run this plugin as its not part of CAT tool lifecycle. You may launch separately.")
+                logger.info(f"Loading plugin: {plugin_name}. Standalone plugin detected. Will not run this plugin as its not part of CAT tool lifecycle. You may launch separately.")
                 continue
 
             try:
-                logging.info(f"Loading plugin: {plugin_name}")
+                logger.info(f"Loading plugin: {plugin_name}")
 
                 # Import the module dynamically from the path
                 spec = importlib.util.spec_from_file_location(f"plugins.{plugin_name}.main", main_file)
                 if spec is None or spec.loader is None:
-                     logging.error(f"Could not load spec for plugin {plugin_name}")
+                     logger.error(f"Could not load spec for plugin {plugin_name}")
                      continue
 
                 module = importlib.util.module_from_spec(spec)
@@ -308,10 +309,10 @@ class Engine:
                 try:
                     spec.loader.exec_module(module)
                 except SystemExit:
-                    logging.warning(f"Plugin {plugin_name} called sys.exit() during loading. Skipping.")
+                    logger.warning(f"Plugin {plugin_name} called sys.exit() during loading. Skipping.")
                     continue
                 except Exception as e:
-                    logging.error(f"Error loading plugin {plugin_name}: {e}")
+                    logger.error(f"Error loading plugin {plugin_name}: {e}")
                     continue
                 finally:
                     # Clean up sys.path
@@ -319,7 +320,7 @@ class Engine:
                         sys.path.pop(0)
 
                 if hasattr(module, "run_plugin"):
-                    logging.info(f"Executing plugin: {plugin_name}")
+                    logger.info(f"Executing plugin: {plugin_name}")
                     try:
                         # Check if the function is a coroutine (async)
                         if asyncio.iscoroutinefunction(module.run_plugin):
@@ -327,18 +328,18 @@ class Engine:
                         else:
                             result = module.run_plugin(context)
 
-                        logging.info(f"Plugin {plugin_name} finished. Result: {result}")
+                        logger.info(f"Plugin {plugin_name} finished. Result: {result}")
                     except Exception as e:
-                        logging.error(f"Error running plugin {plugin_name}: {e}")
-                        logging.debug(traceback.format_exc())
+                        logger.error(f"Error running plugin {plugin_name}: {e}")
+                        logger.debug(traceback.format_exc())
                 else:
-                    logging.debug(f"Plugin {plugin_name} (in {main_file}) does not have a 'run_plugin' function. Assuming standalone or library plugin.")
+                    logger.debug(f"Plugin {plugin_name} (in {main_file}) does not have a 'run_plugin' function. Assuming standalone or library plugin.")
             except Exception as e:
-                logging.error(f"Failed to load plugin {plugin_name}: {e}")
-                logging.debug(traceback.format_exc())
+                logger.error(f"Failed to load plugin {plugin_name}: {e}")
+                logger.debug(traceback.format_exc())
 
     async def initControllers(self) -> ([AppDService], str):
-        logging.info(f"Validating Controller Login(s) for Job - {self.jobFileName} ")
+        logger.info(f"Validating Controller Login(s) for Job - {self.jobFileName} ")
         loginFutures = [controller.getAuthMethod().authenticate() for controller in
                         self.controllers]
         loginResults = await AsyncioUtils.gatherWithConcurrency(*loginFutures)
@@ -352,8 +353,8 @@ class Engine:
             hostData["controller"] = controller
 
     async def validateThresholdsFile(self):
-        logging.info(f"----------Input Validation----------")
-        logging.info(f"Validating Thresholds - {self.thresholdsFileName}")
+        logger.info(f"----------Input Validation----------")
+        logger.info(f"Validating Thresholds - {self.thresholdsFileName}")
 
         if "version" not in self.thresholds:
             await self.abortAndCleanup(
@@ -416,11 +417,11 @@ class Engine:
         for componentType, thresholds in self.thresholds.items():
             for jobStep, currThresholdLevels in thresholds.items():
                 if list(currThresholdLevels.keys()) != thresholdLevels:
-                    logging.error(f"Thresholds file does not contains all of {thresholdLevels} on JobStep {jobStep}")
+                    logger.error(f"Thresholds file does not contains all of {thresholdLevels} on JobStep {jobStep}")
                     fail = True
                     break
                 if not (currThresholdLevels["platinum"].keys() == currThresholdLevels["gold"].keys() == currThresholdLevels["silver"].keys()):
-                    logging.error(f"Thresholds file does not contain same evaluation metrics for each threshold level on JobStep {jobStep}")
+                    logger.error(f"Thresholds file does not contain same evaluation metrics for each threshold level on JobStep {jobStep}")
                     fail = True
                     break
                 thresholds[jobStep]["direction"] = {}  # increasing or decreasing
@@ -430,26 +431,26 @@ class Engine:
                     elif thresholdStrictlyDecreasing(jobStep, metric, componentType):
                         thresholds[jobStep]["direction"][metric] = "decreasing"
                     else:
-                        logging.error(
+                        logger.error(
                             f"Thresholds file does not contain strictly increasing/decreasing evaluation metric thresholds for {metric} on JobStep {jobStep}"
                         )
                         fail = True
         if fail:
-            logging.error(f"Invalid thresholds file. Aborting.")
+            logger.error(f"Invalid thresholds file. Aborting.")
             sys.exit(0)
         else:
-            logging.debug(f"Validated thresholds file")
+            logger.debug(f"Validated thresholds file")
 
     async def process(self):
-        logging.info(f"----------Extract----------")
+        logger.info(f"----------Extract----------")
         for jobStep in [*self.otherSteps, *self.maturityAssessmentSteps]:
             await jobStep.extract(self.controllerData)
 
-        logging.info(f"----------Analyze----------")
+        logger.info(f"----------Analyze----------")
         for jobStep in [*self.maturityAssessmentSteps, *self.otherSteps]:
             jobStep.analyze(self.controllerData, self.thresholds)
 
-        logging.info(f"----------Report----------")
+        logger.info(f"----------Report----------")
         job_output_dir = os.path.join(self.output_dir, self.jobFileName)
         for report in self.reports:
             report.createWorkbook(self.maturityAssessmentSteps, self.controllerData, self.jobFileName, self.output_dir)
@@ -478,7 +479,7 @@ class Engine:
         createCxPptTemplate(self.jobFileName, self.output_dir)
         createCxHamUseCasePpt(self.jobFileName, self.output_dir)
 
-        logging.info(f"----------Complete----------")
+        logger.info(f"----------Complete----------")
         # if controllerData.json file exists, delete it
         controller_data_path = os.path.join(job_output_dir, "controllerData.json")
         if Path(controller_data_path).exists():
@@ -500,23 +501,23 @@ class Engine:
 
             totalCalls = sum([controller.totalCallsProcessed for controller in self.controllers])
 
-            logging.info(f"Total API calls made: {totalCalls}")
-            logging.info(f"Size of data retrieved: {size} {sizeName[i]}")
-            logging.info(f"Total execution time: {executionTimeString}")
+            logger.info(f"Total API calls made: {totalCalls}")
+            logger.info(f"Size of data retrieved: {size} {sizeName[i]}")
+            logger.info(f"Total execution time: {executionTimeString}")
 
     async def abortAndCleanup(self, msg: str, error=True):
         """Closes open controller connections"""
         await AsyncioUtils.gatherWithConcurrency(*[controller.close() for controller in self.controllers])
         if error:
-            logging.error(msg)
+            logger.error(msg)
             sys.exit(1)
         else:
             if msg:
-                logging.info(msg)
+                logger.info(msg)
             sys.exit(0)
 
     async def postProcess(self):
-        logging.info(f"----------Post Process----------")
+        logger.info(f"----------Post Process----------")
         commands = []
         commands.append(ConfigurationAnalysisReport(self.output_dir))
 
@@ -526,4 +527,4 @@ class Engine:
         for command in commands:
             await command.post_process(self.jobFileName)
 
-        logging.info(f"----------Post Process Done----------")
+        logger.info(f"----------Post Process Done----------")

@@ -125,7 +125,7 @@ def header() -> tuple[bool, bool]:
         """
         <style>
             h1 { text-align: center; }
-            .stTextArea textarea { font-family: monospace; font-size: 15px; }
+            .stTextArea textarea { font-family: monospace; font-size: 7px; }
             .block-container { min-width: 1000px; }
             .info-bubble {
                 display: inline-block;
@@ -133,7 +133,7 @@ def header() -> tuple[bool, bool]:
                 color: #333;
                 border-radius: 12px;
                 padding: 2px 10px;
-                font-size: 12px;
+                font-size: 7px;
                 margin-left: 8px;
                 vertical-align: middle;
             }
