@@ -39,6 +39,7 @@ jobs:
         with:
           files: ./*.tgz # Assumes only one .tgz file is present in the current directory
           token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
       - name: Keep workflow artifact within the current workflow namespace
         uses: actions/upload-artifact@v4

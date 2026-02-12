@@ -79,6 +79,7 @@ jobs:
           files: dist/${{ steps.install_it.outputs.bundle_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
           overwrite_files: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
       - name: Keep workflow artifact within the current workflow namespace
         uses: actions/upload-artifact@v4

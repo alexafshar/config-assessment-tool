@@ -149,13 +149,13 @@ jobs:
             "$LINUX_IMAGE" \
             "$WINDOWS_IMAGE"
           
-          # Create and Push 'latest' if this is a tag push
-          # Also check if 'latest' tag generation is actually enabled in metadata action.
-          # steps.meta.outputs.tags will contain 'latest' if enabled.
-          # Here we hardcoded logic: if type is tag, push latest.
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+          # Create and Push 'latest' if this is a tag push AND not a pre-release
+          # We assume any tag with a hyphen (e.g. v1.8.0-beta) is a pre-release
+          if [[ "${{ github.ref_type }}" == "tag" && "${{ github.ref_name }}" != *"-"* ]]; then
              echo "  Also updating 'latest' tag..."
              docker buildx imagetools create -t "$LATEST_TAG" \
                "$LINUX_IMAGE" \
                "$WINDOWS_IMAGE"
+          else
+             echo "  Skipping 'latest' tag update (pre-release or not a tag)."
           fi

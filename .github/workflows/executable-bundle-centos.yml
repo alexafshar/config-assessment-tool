@@ -42,6 +42,7 @@ jobs:
         with:
           files: ${{ env.BUNDLE_NAME }} # Use the exact bundle name from environment variable
           token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
       - name: Keep workflow artifact within the current workflow namespace
         uses: actions/upload-artifact@v4
