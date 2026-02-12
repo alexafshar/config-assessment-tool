@@ -156,7 +156,7 @@ def main():
         if "Address already in use" in str(e):
             print(f"\nError: Port {port} is already in use.")
             print("Try running with a different port argument, e.g.:")
-            print(f"  ./cat.sh --plugin start demo_flask_cli {port+1}")
+            print(f"  ./config-assessment-tool.sh --plugin start demo_flask_cli {port+1}")
         else:
             raise
 

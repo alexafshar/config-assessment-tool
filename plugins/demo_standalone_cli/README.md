@@ -18,10 +18,10 @@ This plugin demonstrates a purely standalone tool that does not participate in t
 
 Run via the main script:
 ```bash
-./cat.sh --plugin start demo_standalone_cli
+./config-assessment-tool.sh --plugin start demo_standalone_cli
 ```
 
 Pass arguments:
 ```bash
-./cat.sh --plugin start demo_standalone_cli arg1 arg2
+./config-assessment-tool.sh --plugin start demo_standalone_cli arg1 arg2
 ```

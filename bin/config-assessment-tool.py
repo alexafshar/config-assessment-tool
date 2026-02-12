@@ -30,7 +30,7 @@ def run(path: str):
     if not is_docker_available():
         logging.error("Docker is not running or not accessible. Please start Docker Desktop.")
         logging.info("If on Windows, ensure you are running as Administrator or have configured the Docker pipe.")
-        logging.info("Alternatively, use 'cat.bat --start' (Windows) or './cat.sh --start' (Linux/Mac) to run locally without Docker.")
+        logging.info("Alternatively, use 'config-assessment-tool.bat --start' (Windows) or './config-assessment-tool.sh --start' (Linux/Mac) to run locally without Docker.")
         sys.exit(1)
 
     arch = get_arch()

@@ -214,7 +214,7 @@ echo FileHandler stopped.
 
 echo Stopping generic python processes (backend/streamlit)...
 REM Warning: This might be too aggressive on a developer machine,
-REM but matches the aggressive pkill in cat.sh
+REM but matches the aggressive pkill in config-assessment-tool.sh
 taskkill /F /IM python.exe /T >nul 2>&1
 taskkill /F /IM streamlit.exe /T >nul 2>&1
 echo Processes stopped.

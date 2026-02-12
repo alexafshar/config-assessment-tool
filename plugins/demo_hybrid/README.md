@@ -25,11 +25,11 @@ This plugin demonstrates the "Hybrid" capability, allowing a plugin to function 
 **Standalone Mode (CLI):**
 Runs independently with dummy data.
 ```bash
-./cat.sh --plugin start demo_hybrid
+./config-assessment-tool.sh --plugin start demo_hybrid
 ```
 
 **Integrated Mode (Assessment):**
 Runs automatically after a job completes.
 ```bash
-./cat.sh --start -j DefaultJob
+./config-assessment-tool.sh --start -j DefaultJob
 ```

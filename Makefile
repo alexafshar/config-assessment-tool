@@ -36,7 +36,6 @@ help:
 	@echo "  run                         - Run the config-assessment-tool with UI (requires Docker)"
 	@echo "  run-backend                 - Run the non-UI version"
 	@echo "  build-image                 - Build a single Docker image using the root Dockerfile"
-	@echo "  build-multiarch-image       - Build and push a multi-architecture Docker image"
 	@echo "  exec-bundle                 - Create executable bundle for the current platform"
 	@echo "  install                     - Install Python dependencies"
 	@echo "  clean                       - Cleanup transitory directories used for build"

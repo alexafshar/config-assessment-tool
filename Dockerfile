@@ -34,6 +34,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY backend /app/backend
 COPY frontend /app/frontend
 COPY plugins /app/plugins
+COPY bin /app/bin
 COPY VERSION .
 COPY entrypoint.sh /app/entrypoint.sh
 

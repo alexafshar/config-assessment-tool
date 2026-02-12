@@ -77,7 +77,7 @@ class Engine:
         self.output_dir = os.path.join(self.user_data_dir, "output")
 
         logging.info(f'\n{open(f"backend/resources/img/splash.txt").read()}')
-        self.codebaseVersion = open(f"VERSION").read()
+        self.codebaseVersion = open(f"VERSION").read().strip()
         logging.info(f"Running Software Version: {self.codebaseVersion}")
 
 

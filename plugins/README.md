@@ -67,16 +67,16 @@ A plugin can support both modes!
 
 **List available plugins:**
 ```bash
-./cat.sh --plugin list
+./config-assessment-tool.sh --plugin list
 ```
 
 **Run a specific plugin (Standalone Mode):**
 ```bash
-./cat.sh --plugin start <plugin_name> [arg1] [arg2] ...
+./config-assessment-tool.sh --plugin start <plugin_name> [arg1] [arg2] ...
 ```
 
 **Run Integrated Plugins:**
 Simply run a standard job. All valid plugins found in this folder will execute at the end.
 ```bash
-./cat.sh --start -j DefaultJob
+./config-assessment-tool.sh --start -j DefaultJob
 ```

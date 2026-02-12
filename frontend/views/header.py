@@ -111,7 +111,7 @@ def header() -> tuple[bool, bool]:
                         text-align: center;
                         box-shadow: 0 10px 25px rgba(0,0,0,0.5);
                     ">
-                        <h2 style="color: #333; margin: 0 0 15px 0;">CAT tool has been shut down.</h2>
+                        <h2 style="color: #333; margin: 0 0 15px 0;">Configuration Assessment Tool has been shut down.</h2>
                         <h4 style="color: #555; margin: 0; font-weight: normal;">You may close this tab.</h4>
                     </div>
                 </div>

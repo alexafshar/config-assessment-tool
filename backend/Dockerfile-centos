@@ -42,6 +42,7 @@ WORKDIR /root/config-assessment-tool
 COPY backend ./backend
 COPY input ./input
 COPY plugins ./plugins
+COPY bin ./bin
 COPY VERSION .
 COPY Pipfile .
 # COPY Pipfile.lock .

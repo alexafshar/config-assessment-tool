@@ -17,14 +17,14 @@ The purpose of this plugin is to show developers how to:
 
 ## How to Run
 
-You can start this plugin using the main `cat.sh` script from the project root:
+You can start this plugin using the main `config-assessment-tool.sh` script from the project root:
 
 ```bash
-./cat.sh --plugin start demo_flask_cli
+./config-assessment-tool.sh --plugin start demo_flask_cli
 ```
 
 Or, if passing arguments is supported by the plugin's `main.py`:
 
 ```bash
-./cat.sh --plugin start demo_flask_cli --port 5000
+./config-assessment-tool.sh --plugin start demo_flask_cli --port 5000
 ```

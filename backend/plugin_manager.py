@@ -33,7 +33,7 @@ def list_plugins():
             if os.path.exists(main_file):
                 if os.path.exists(readme_file):
                     if is_remote_session():
-                         status = f"(run: cat --plugin docs {p})"
+                         status = f"(run: config-assessment-tool --plugin docs {p})"
                     else:
                         try:
                             import tempfile
