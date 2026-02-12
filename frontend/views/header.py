@@ -176,9 +176,10 @@ def header() -> tuple[bool, bool]:
     with newJobExpander.form("NewJob"):
         st.write("Create new Job")
 
-        hostCol, portCol, _ = st.columns(3)
+        hostCol, portCol, authTypeCol = st.columns(3)
         host = hostCol.text_input(label="host", value="acme.saas.appdynamics.com")
         port = portCol.number_input(label="port", value=443)
+        authType = authTypeCol.selectbox("Auth Type", ["basic", "token", "secret"])
 
         accountCol, usernameCol, pwdCol = st.columns(3)
         account = accountCol.text_input(label="account", value="acme")
@@ -186,7 +187,7 @@ def header() -> tuple[bool, bool]:
         pwd = pwdCol.text_input(label="password", value="hunter2", type="password")
 
         if st.form_submit_button("create"):
-            job_file_path = f"input/jobs/{host[:host.index('.')]}.json"
+            job_file_path = f"input/jobs/{host}.json"
             with open(job_file_path, "w", encoding="ISO-8859-1") as f:
                 json.dump(
                     [
@@ -195,6 +196,7 @@ def header() -> tuple[bool, bool]:
                             "port": port,
                             "ssl": True,
                             "account": account,
+                            "authType": authType,
                             "username": username,
                             "pwd": base64Encode(f"CAT-ENCODED-{pwd}"),
                             "verifySsl": True,
@@ -208,9 +210,9 @@ def header() -> tuple[bool, bool]:
                     indent=4,
                 )
             if os.path.exists(job_file_path):
-                st.info(f"Successfully created job '{host[:host.index('.')]}'")
+                st.info(f"Successfully created job '{host}'")
             else:
-                st.error(f"Failed to create job '{host[:host.index('.')]}'")
+                st.error(f"Failed to create job '{host}'")
 
             time.sleep(2)
             rerun()
