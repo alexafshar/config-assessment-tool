@@ -79,6 +79,11 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
+            type=ref,event=branch
+            type=ref,event=pr
 
       # Standardize on -windows suffix for consistent intermediary tags
       - name: Build and push Windows image
@@ -119,8 +124,10 @@ jobs:
           VERSION="${{ steps.meta.outputs.version }}"
           
           # The linux image is already a multi-arch manifest list (amd64/arm64)
-          # We need to reference it properly. 'docker manifest create' supports source manifests being lists.
           LINUX_IMAGE="${IMAGE_ROOT}:${VERSION}-linux"
+          
+          # NOTE: The windows image tag might have a different suffix or structure depending on build-windows job.
+          # In the build-windows job, we push: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}-windows
           WINDOWS_IMAGE="${IMAGE_ROOT}:${VERSION}-windows"
           
           # Tags to generate (v1.8.1 and latest)
@@ -131,14 +138,10 @@ jobs:
           echo "  Primary: $TARGET_TAG"
           echo "  Sources: $LINUX_IMAGE, $WINDOWS_IMAGE"
           
-          # Use --amend to safely merge existing manifests/lists
-          # IMPORTANT: When source images are manifest lists (like our linux multi-arch image),
-          # docker manifest create with --amend might still check architecture compatibility or fail if it expects simple images.
-          # However, the error "is a manifest list" usually implies we are trying to add a list as if it were a single layer.
-          # The correct way to merge manifest lists is often complex or requires referencing specific digests if 'create' fails.
-          # But actually, 'docker manifest create' simply doesn't support recursive manifest lists (manifest list inside manifest list) well in older versions or specific registry implementations.
-          # A common workaround is to reference the underlying architecture specific images, OR use a tool like 'imagetools' from buildx
-          # BUT, let's try the syntax that supports lists by NOT using 'create' but using 'docker buildx imagetools create'.
+          # Check if source images exist before attempting to create the manifest
+          # This helps diagnose 'not found' errors clearly or skip if windows failed silently?
+          # Actually, if build-windows job ran successfully, the image should be there.
+          # Use docker manifest inspect to verify existence (optional but robust)
           
           echo "Using docker buildx imagetools create to merge manifests..."
           
@@ -147,6 +150,9 @@ jobs:
             "$WINDOWS_IMAGE"
           
           # Create and Push 'latest' if this is a tag push
+          # Also check if 'latest' tag generation is actually enabled in metadata action.
+          # steps.meta.outputs.tags will contain 'latest' if enabled.
+          # Here we hardcoded logic: if type is tag, push latest.
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
              echo "  Also updating 'latest' tag..."
              docker buildx imagetools create -t "$LATEST_TAG" \
