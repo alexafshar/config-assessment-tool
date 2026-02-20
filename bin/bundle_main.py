@@ -66,7 +66,8 @@ def run_backend():
     try:
         import backend.backend
         # Click's main() will handle sys.argv parsing/execution and sys.exit
-        backend.backend.main()
+        # Force prog_name to be "config-assessment-tool" instead of script name
+        backend.backend.main(prog_name="config-assessment-tool")
     except ImportError as e:
         print(f"Error importing backend: {e}")
         sys.exit(1)

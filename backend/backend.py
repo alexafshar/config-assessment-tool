@@ -13,9 +13,6 @@ from backend.util.logging_utils import initLogging
 @click.option("-t", "--thresholds-file", default="DefaultThresholds")
 @click.option("-d", "--debug", is_flag=True)
 @click.option("-c", "--concurrent-connections", type=int)
-@click.option("-u", "--username", default=None, help="overwrite job file with this username")
-@click.option("-p", "--password", default=None, help="overwrite job file with this password")
-@click.option("-m", "--auth-method", default=None, help="overwrite job file with this auth-method(basic,secret,token)")
 @coro
 async def main(job_file: str, thresholds_file: str, debug, concurrent_connections: int, username: str, password: str, auth_method: str):
     initLogging(debug)

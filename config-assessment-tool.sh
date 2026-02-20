@@ -30,8 +30,8 @@ if command -v git &> /dev/null; then
   fi
 fi
 
-# Use appdynamics if detecting developer's fork or no detection
-if [[ "$DETECTED_OWNER" == "alexafshar" ]] || [[ -z "$DETECTED_OWNER" ]]; then
+# Use appdynamics if no owner detected
+if [[ -z "$DETECTED_OWNER" ]]; then
   REPO_OWNER="appdynamics"
 else
   REPO_OWNER="$DETECTED_OWNER"
@@ -48,6 +48,19 @@ if [[ -f VERSION ]]; then
 else
   echo "VERSION file not found."
   exit 1
+fi
+
+# Ensure checking/retagging happens before usage
+# If user has the v-prefixed image locally but we want standard no-v image, retag it.
+V_VERSION="v$VERSION"
+V_IMAGE="$IMAGE_NAME:$V_VERSION"
+NO_V_IMAGE="$IMAGE_NAME:$VERSION"
+
+if docker image inspect "$V_IMAGE" >/dev/null 2>&1; then
+    if ! docker image inspect "$NO_V_IMAGE" >/dev/null 2>&1; then
+        echo "Found image $V_IMAGE, retagging to $NO_V_IMAGE for consistency..."
+        docker tag "$V_IMAGE" "$NO_V_IMAGE"
+    fi
 fi
 
 check_available_images() {
@@ -122,72 +135,79 @@ start_filehandler() {
   sleep 2
 }
 
-case "$1" in
-  --start)
-    if [[ "$2" == "docker" ]]; then
-      export FILE_HANDLER_HOST=host.docker.internal
-      start_filehandler
-      docker stop $CONTAINER_NAME >/dev/null 2>&1
-      docker rm $CONTAINER_NAME >/dev/null 2>&1
+# Helper function to run docker logic
+run_docker() {
+    export FILE_HANDLER_HOST=host.docker.internal
+    start_filehandler
+    docker stop $CONTAINER_NAME >/dev/null 2>&1
+    docker rm $CONTAINER_NAME >/dev/null 2>&1
 
-      # Check if UI Mode requested (No args, or --ui/--run flags in 3rd position)
-      # $1=--start, $2=docker, $3=optional arg
-      IS_UI_MODE=false
-      if [[ $# -eq 2 ]]; then
-          IS_UI_MODE=true
-      elif [[ "$3" == "--ui" || "$3" == "--run" ]]; then
-          IS_UI_MODE=true
-      fi
+    # Check if UI Mode requested (No args, or --ui/--run flags in first position after 'docker')
+    # $1 is the first arg after 'docker'
+    IS_UI_MODE=false
+    if [[ $# -eq 0 ]]; then
+        IS_UI_MODE=true
+    elif [[ "$1" == "--ui" || "$1" == "--run" ]]; then
+        IS_UI_MODE=true
+    fi
 
-      if [[ "$IS_UI_MODE" == "true" ]]; then
-        echo "Starting container in UI mode..."
-        # Pass --ui explicitly to trigger UI mode in entrypoint
-        CONTAINER_ID=$(docker run --add-host=host.docker.internal:host-gateway -d --name $CONTAINER_NAME -e FILE_HANDLER_HOST=$FILE_HANDLER_HOST -p $PORT:$PORT $MOUNTS $IMAGE --ui)
-        if [ $? -eq 0 ]; then
-          echo "Container started successfully with ID: $CONTAINER_ID"
-          echo "UI available at http://localhost:$PORT"
-          docker logs -f $CONTAINER_ID
-        else
-          echo "Failed to start container."
-          exit 1
-        fi
+    if [[ "$IS_UI_MODE" == "true" ]]; then
+      echo "Starting container in UI mode..."
+      # Pass --ui explicitly to trigger UI mode in entrypoint
+      CONTAINER_ID=$(docker run --add-host=host.docker.internal:host-gateway -d --name $CONTAINER_NAME -e FILE_HANDLER_HOST=$FILE_HANDLER_HOST -p $PORT:$PORT $MOUNTS $IMAGE --ui)
+      if [ $? -eq 0 ]; then
+        echo "Container started successfully with ID: $CONTAINER_ID"
+        echo "UI available at http://localhost:$PORT"
+        docker logs -f $CONTAINER_ID
       else
-        echo "Starting container in backend mode with args: ${@:3}"
-        # Pass arguments directly without prepending 'backend'
-        docker run --add-host=host.docker.internal:host-gateway --rm --name $CONTAINER_NAME -e FILE_HANDLER_HOST=$FILE_HANDLER_HOST -p $PORT:$PORT $MOUNTS $IMAGE "${@:3}"
-        EXIT_CODE=$?
-        if [ $EXIT_CODE -ne 0 ]; then
-          echo "Container failed with exit code: $EXIT_CODE"
-          exit $EXIT_CODE
-        fi
+        echo "Failed to start container."
+        exit 1
       fi
     else
-      export PYTHONPATH="$(pwd):$(pwd)/backend"
-
-      if ! command -v pipenv &> /dev/null; then
-        echo "pipenv not found. Attempting to install via pip..."
-        pip install pipenv
-      fi
-
-      # Ensure dependencies are installed before running
-      echo "Checking/Installing dependencies..."
-      pipenv install
-
-      # Unified Argument Handling for Source Mode
-      # We check if the first arg is --ui or --run to launch UI, otherwise backend.
-      # Default to UI if no args are provided ($2 is empty)
-      if [[ -z "$2" || "$2" == "--ui" || "$2" == "--run" ]]; then
-        echo "PYTHONPATH is: $PYTHONPATH"
-        echo "Running application in UI mode from source..."
-
-        echo "UI available at http://localhost:$PORT"
-        pipenv run streamlit run frontend/frontend.py
-      else
-        echo "PYTHONPATH is: $PYTHONPATH"
-        echo "Running application in backend mode from source with args: ${@:2}"
-        pipenv run python backend/backend.py "${@:2}"
+      echo "Starting container in backend mode with args: $@"
+      # Pass arguments directly without prepending 'backend'
+      docker run --add-host=host.docker.internal:host-gateway --rm --name $CONTAINER_NAME -e FILE_HANDLER_HOST=$FILE_HANDLER_HOST -p $PORT:$PORT $MOUNTS $IMAGE "$@"
+      EXIT_CODE=$?
+      if [ $EXIT_CODE -ne 0 ]; then
+        echo "Container failed with exit code: $EXIT_CODE"
+        exit $EXIT_CODE
       fi
     fi
+}
+
+# Helper function to run source logic
+run_source() {
+    export PYTHONPATH="$(pwd):$(pwd)/backend"
+
+    if ! command -v pipenv &> /dev/null; then
+      echo "pipenv not found. Attempting to install via pip..."
+      pip install pipenv
+    fi
+
+    # Ensure dependencies are installed before running
+    echo "Checking/Installing dependencies..."
+    pipenv install
+
+    # Unified Argument Handling for Source Mode
+    # We check if the first arg is --ui or --run to launch UI, otherwise backend.
+    # Default to UI if no args are provided ($1 is empty)
+    if [[ -z "$1" || "$1" == "--ui" || "$1" == "--run" ]]; then
+      echo "PYTHONPATH is: $PYTHONPATH"
+      echo "Running application in UI mode from source..."
+
+      echo "UI available at http://localhost:$PORT"
+      pipenv run streamlit run frontend/frontend.py
+    else
+      echo "PYTHONPATH is: $PYTHONPATH"
+      echo "Running application in backend mode from source with args: $@"
+      pipenv run python backend/backend.py "$@"
+    fi
+}
+
+case "$1" in
+  docker)
+    shift
+    run_docker "$@"
     ;;
 
   --plugin)
@@ -232,16 +252,17 @@ case "$1" in
     pkill -f "streamlit run frontend/frontend.py" 2>/dev/null
     echo "Streamlit stopped."
     ;;
-  *)
+
+  --help|help|"")
     echo "Usage:"
-    echo "  config-assessment-tool --start [--ui|--run]   # Starts CAT UI (Default). Requires Python 3.12 and pipenv installed."
-    echo "  config-assessment-tool --start [args]         # Starts CAT headless mode from source with [args]."
-    echo "  config-assessment-tool --start docker [--ui]  # Starts CAT UI using Docker. Requires Docker."
-    echo "  config-assessment-tool --start docker [args]  # Starts CAT headless mode using Docker with [args]."
+    echo "  config-assessment-tool [--ui|--run]             # Starts CAT UI from source (Default). Requires Python 3.12 and pipenv."
+    echo "  config-assessment-tool [OPTIONS]                # Starts CAT headless mode from source with [OPTIONS]."
+    echo "  config-assessment-tool docker [--ui]            # Starts CAT UI using Docker. Requires Docker Engine installed."
+    echo "  config-assessment-tool docker [OPTIONS]         # Starts CAT headless mode using Docker with [OPTIONS]."
     echo "  config-assessment-tool --plugin <list|start|docs> [name]    # Manage plugins"
-    echo "  config-assessment-tool shutdown               # Stop and remove the running container and FileHandler"
+    echo "  config-assessment-tool shutdown                 # Stop and remove the running container and FileHandler"
     echo ""
-    echo "Arguments [args]:"
+    echo "[OPTIONS]:"
     echo "  -j, --job-file <name>             Job file name (default: DefaultJob)"
     echo "  -t, --thresholds-file <name>      Thresholds file name (default: DefaultThresholds)"
     echo "  -d, --debug                       Enable debug logging"
@@ -263,12 +284,17 @@ case "$1" in
     echo "    -v \$(pwd)/input:/app/input \\"
     echo "    -v \$(pwd)/output:/app/output \\"
     echo "    -v \$(pwd)/logs:/app/logs \\"
-    echo "    $IMAGE_NAME:$VERSION [args]"
+    echo "    $IMAGE_NAME:$VERSION [OPTIONS]"
     echo "    e.g. $IMAGE_NAME:$VERSION -j <job-file>"
     echo "  "
 
     check_available_images
-    exit 1
+    exit 0
+    ;;
+
+  *)
+    # If it's not a known command or docker, assume it is arguments for running from source
+    run_source "$@"
     ;;
 esac
 

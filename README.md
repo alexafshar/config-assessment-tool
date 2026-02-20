@@ -1,8 +1,8 @@
-# Config Assessment Tool - Beta Release Runbook (v1.8.0-beta.1)
+# Config Assessment Tool - Beta Release Runbook (1.8.0-beta.1)
 
-This document provides a quick-start guide for the v1.8.0-beta.1 release. This beta release introduces usage improvements, UI improvements, feature and bug fixes. 
+This document provides a quick-start guide for the 1.8.0-beta.1 release. This beta release introduces usage improvements, UI improvements, feature and bug fixes. 
 
-**[View Full Release Notes](https://github.com/Appdynamics/config-assessment-tool/releases/tag/v1.8.0-beta.1)**
+**[View Full Release Notes](https://github.com/Appdynamics/config-assessment-tool/releases/tag/1.8.0-beta.1)**
 
 ## Table of Contents
 - [1. Direct Docker Usage](#1-direct-docker-usage)
@@ -22,20 +22,60 @@ This document provides a quick-start guide for the v1.8.0-beta.1 release. This b
 - [4. Configuration (Important)](#4-configuration-important)
     - [Authentication Options (`authType`)](#authentication-options-authtype)
 
-# 1. Direct Docker Usage
+# 1. Using Docker (Recommended)
+*Node: Docker instructions are for MacOS/Linux. Windows coming soon. Use executable bundle for Windows in the meantime or run from source*  
 
-If you prefer to run Docker commands directly without the helper script, use the beta tag `1.8.0-beta.1`.
+This is the easiest way to run the tool using Docker. The only prerequisite is a local installation of the Docker engine or Docker desktop and access to the shell Terminal.
+
+1.  **Download or Clone the Source:**
+    *   Download the Source Code (zip/tar.gz) from the **[Releases Page](https://github.com/Appdynamics/config-assessment-tool/releases/tag/1.8.0-beta.1)**.
+    *   *OR* if you have git installed, clone the repository: `git clone https://github.com/Appdynamics/config-assessment-tool.git`
+
+2.  **Unzip the source if downloaded. Bring up a Shell Terminal and navigate to the directory change into the project directory:**
+    ```bash
+    cd config-assessment-tool
+    ```
+
+3.  **Run the Tool:**
+
+    **UI mode: Start the UI:**
+    ```bash
+    ./config-assessment-tool.sh docker --ui
+    ```
+    **Headless mode: Run Headless:**
+    ```bash
+    ./config-assessment-tool.sh docker -j DefaultJob
+    ```
+
+### Manual Docker Command (Advanced)
+If you prefer to run `docker` directly without downloading the source and running the shell script, you must manually mount the required directories that `docker` uses to find the job files or output log files to.
+
+**Required Directory Structure:**
+Ensure your local directory from where you run the docker command has the below directory structure before running the container: 
+```text
+configuration-assessment-tool/
+├── input
+│   ├── jobs
+│   │   └── YourJobFile.json
+│   └── thresholds
+│       └── DefaultThresholds.json
+├── logs
+└── output
+```
 
 ## Run the UI (Frontend + Backend)
+   ```bash
+    cd config-assessment-tool
+   ```
 ```bash
 docker run \
   --name "cat-tool-beta" \
   --rm \
   -p 8501:8501 \
-  -v "$(pwd)/input":/app/input \
-  -v "$(pwd)/output":/app/output \
-  -v "$(pwd)/logs":/app/logs \
-  ghcr.io/alexafshar/config-assessment-tool:1.8.0-beta.1 ui
+  -v ./input:/app/input \
+  -v ./output:/app/output \
+  -v ./logs:/app/logs \
+  ghcr.io/alexafshar/config-assessment-tool:1.8.0-beta.1 --ui
 ```
 *Access the UI at http://localhost:8501*
 
@@ -84,7 +124,7 @@ Display the available command line arguments.
 
 ---
 
-# 3. Running from source 
+# 3. Running from source (`config-assessment-tool.sh`) 
 
 The `config-assessment-tool.sh` script is the recommended way to run the tool on macOS and Linux once you have the source locally. 
 
@@ -98,23 +138,23 @@ The `config-assessment-tool.sh` script is the recommended way to run the tool on
 This will launch the Web UI in your default browser.
 ```bash
 # Using Docker (Recommended)
-./config-assessment-tool.sh --start docker --ui
+./config-assessment-tool.sh docker --ui
 # Or simply (defaults to UI)
-./config-assessment-tool.sh --start docker
+./config-assessment-tool.sh docker
 
 # From Source
-./config-assessment-tool.sh --start --ui
+./config-assessment-tool.sh --ui
 ```
 
 **Run Headless (Backend Only):**
 Run the assessment directly without the UI.
 ```bash
 # Using Docker
-./config-assessment-tool.sh --start docker -j <job-file-name>
-# Example: ./config-assessment-tool.sh --start docker -j MyJob
+./config-assessment-tool.sh docker -j <job-file-name>
+# Example: ./config-assessment-tool.sh docker -j MyJob
 
 # From Source
-./config-assessment-tool.sh --start -j <job-file-name>
+./config-assessment-tool.sh -j <job-file-name>
 ```
 
 ## Plugin Management
