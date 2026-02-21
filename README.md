@@ -5,7 +5,8 @@ This document provides a quick-start guide for the 1.8.0-beta.1 release. This be
 **[View Full Release Notes](https://github.com/alexafshar/config-assessment-tool/releases/tag/1.8.0-beta.1)**
 
 ## Table of Contents
-- [1. Using Docker (Recommended)](#1-using-docker-recommended)
+There are multiple ways to run the tool
+- [1. Using Docker](#1-using-docker-recommended)
     - [Option A: Using Shell Script (Easier)](#option-a-using-shell-script-easier)
     - [Option B: Manual Docker Command (Advanced)](#option-b-manual-docker-command-advanced)
         - [Run the UI](#run-the-ui-frontend--backend)
@@ -24,10 +25,12 @@ This document provides a quick-start guide for the 1.8.0-beta.1 release. This be
 - [4. Configuration (Important)](#4-configuration-important)
     - [Authentication Options (`authType`)](#authentication-options-authtype)
 
-# 1. Using Docker (Recommended)
+# 1. Using Docker
 *Node: Docker instructions are for MacOS/Linux. Windows PowerShell runbook instructions is coming soon. Use executable bundle for Windows in the meantime or run from source*  
 
 This is the easiest way to run the tool using Docker. The only prerequisite is a local installation of the Docker engine or Docker desktop and access to the shell Terminal.
+
+## Option A: Using Shell Script (Easier)
 
 1.  **Download or Clone the Source:**
     *   Download the Source Code (zip/tar.gz) from the **[Releases Page](https://github.com/alexafshar/config-assessment-tool/releases/tag/1.8.0-beta.1)**.
@@ -38,7 +41,6 @@ This is the easiest way to run the tool using Docker. The only prerequisite is a
     cd config-assessment-tool
     ```
 
-## Option A: Using Shell Script (Easier)
 **Run the Tool using the provided shell script in the downloaded/cloned source:**
 
 **UI mode: Start the UI:**
@@ -98,7 +100,7 @@ docker run \
 ### Getting Help
 Display the help menu for the container.
 ```bash
-docker run ghcr.io/alexafshar/config-assessment-tool:1.8.0-beta.1 --help
+$ docker run ghcr.io/alexafshar/config-assessment-tool:1.8.0-beta.1 --help
 ```
 
 ---
@@ -115,15 +117,15 @@ If you have meant the standalone binaries downloadable from the Releases page (W
         1.  Open a Terminal and navigate to the directory containing the unzipped folder.
         2.  Run the following command to allow the application to run:
             ```bash
-            sudo xattr -rd com.apple.quarantine config-assessment-tool-macosx-*
+            $ sudo xattr -rd com.apple.quarantine config-assessment-tool-macosx-*
             ```
         3.  Navigate into the directory:
             ```bash
-            cd config-assessment-tool-macosx-*
+            $ cd config-assessment-tool-macosx-*
             ```
         4.  Run the tool:
             ```bash
-            ./config-assessment-tool -j DefaultJob
+            $ ./config-assessment-tool -j DefaultJob
             ```
     *   **Linux**: `./config-assessment-tool -j <job-file>`
     *   **Windows**: `.\config-assessment-tool.exe -j <job-file>`
@@ -134,7 +136,7 @@ If you have meant the standalone binaries downloadable from the Releases page (W
     *   **macOS**:
         *(**Follow the quarantine removal steps in the Headless Mode section above if you haven't already)*
         ```bash
-        ./config-assessment-tool --ui
+        $ ./config-assessment-tool --ui
         ```
     *   **Linux**: `./config-assessment-tool --ui`
     *   **Windows**: `.\config-assessment-tool.exe --ui`
@@ -160,45 +162,45 @@ The `config-assessment-tool.sh` script is the recommended way to run the tool on
 **Start the User Interface (UI):**
 This will launch the Web UI in your default browser.
 ```bash
-# Using Docker (Recommended)
+# Using Docker
 ./config-assessment-tool.sh docker --ui
 # Or simply (defaults to UI)
 ./config-assessment-tool.sh docker
 
 # From Source
-./config-assessment-tool.sh --ui
+$ ./config-assessment-tool.sh --ui
 ```
 
 **Run Headless (Backend Only):**
 Run the assessment directly without the UI.
 ```bash
 # Using Docker
-./config-assessment-tool.sh docker -j <job-file-name>
+$ ./config-assessment-tool.sh docker -j <job-file-name>
 # Example: ./config-assessment-tool.sh docker -j MyJob
 
 # From Source
-./config-assessment-tool.sh -j <job-file-name>
+$ ./config-assessment-tool.sh -j <job-file-name>
 ```
 
 ## Plugin Management
 ```bash
 # List available plugins
-./config-assessment-tool.sh --plugin list
+$ ./config-assessment-tool.sh --plugin list
 
 # Start a specific plugin
-./config-assessment-tool.sh --plugin start <plugin_name>
+$ ./config-assessment-tool.sh --plugin start <plugin_name>
 ```
 
 ## Shutdown
 Stops running containers and cleanup processes.
 ```bash
-./config-assessment-tool.sh shutdown
+$ ./config-assessment-tool.sh shutdown
 ```
 
 ## Getting Help
 Display the help menu with all available arguments.
 ```bash
-./config-assessment-tool.sh --help
+$ ./config-assessment-tool.sh --help
 ```
 
 ---
