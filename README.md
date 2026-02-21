@@ -38,18 +38,19 @@ This is the easiest way to run the tool using Docker. The only prerequisite is a
     cd config-assessment-tool
     ```
 
-3.  **Run the Tool using the provided shell script in the downloaded/cloned source:**
+## Option A: Using Shell Script (Easier)
+**Run the Tool using the provided shell script in the downloaded/cloned source:**
 
-    **UI mode: Start the UI:**
-    ```bash
-    ./config-assessment-tool.sh docker --ui
-    ```
-    **Headless mode: Run Headless:**
-    ```bash
-    ./config-assessment-tool.sh docker -j DefaultJob
-    ```
+**UI mode: Start the UI:**
+```bash
+./config-assessment-tool.sh docker --ui
+```
+**Headless mode: Run Headless:**
+```bash
+./config-assessment-tool.sh docker -j DefaultJob
+```
 
-### Manual Docker Command (Advanced)
+## Option B: Manual Docker Command (Advanced)
 If you prefer to run `docker` directly without downloading the source and running the provided shell script, you must provide the required docker command line options to map the local directories to the docker container directories so that CAT running in the container can find the job files or output and log files.
 
 **Suggested Directory Structure:**
@@ -64,7 +65,7 @@ configuration-assessment-tool/
 └── output
 ```
 
-## Run the UI (Frontend + Backend)
+### Run the UI (Frontend + Backend)
 Assuming the above directory structure:
    ```bash
     cd config-assessment-tool
@@ -81,7 +82,7 @@ docker run \
 ```
 *Access the UI at http://localhost:8501*
 
-## Run Headless (Backend Only)
+### Run Headless (Backend Only)
 Pass backend arguments directly (e.g., `-j`).
 ```bash
 docker run \
@@ -94,7 +95,7 @@ docker run \
   -j <job-file-name>
 ```
 
-## Getting Help
+### Getting Help
 Display the help menu for the container.
 ```bash
 docker run ghcr.io/alexafshar/config-assessment-tool:1.8.0-beta.1 --help
