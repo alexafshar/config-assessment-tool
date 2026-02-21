@@ -6,9 +6,11 @@ This document provides a quick-start guide for the 1.8.0-beta.1 release. This be
 
 ## Table of Contents
 - [1. Using Docker (Recommended)](#1-using-docker-recommended)
-    - [Run the UI (Frontend + Backend)](#run-the-ui-frontend--backend)
-    - [Run Headless (Backend Only)](#run-headless-backend-only)
-    - [Getting Help](#getting-help)
+    - [Option A: Using Shell Script (Easier)](#option-a-using-shell-script-easier)
+    - [Option B: Manual Docker Command (Advanced)](#option-b-manual-docker-command-advanced)
+        - [Run the UI](#run-the-ui-frontend--backend)
+        - [Run Headless](#run-headless-backend-only)
+        - [Getting Help](#getting-help)
 - [2. Platform Executable (Standalone Binary)](#2-platform-executable-standalone-binary)
     - [Headless Mode](#headless-mode)
     - [UI Mode](#ui-mode)
