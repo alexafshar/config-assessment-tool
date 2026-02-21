@@ -2,7 +2,7 @@
 
 This document provides a quick-start guide for the 1.8.0-beta.1 release. This beta release introduces usage improvements, UI improvements, feature and bug fixes. 
 
-**[View Full Release Notes](https://github.com/Appdynamics/config-assessment-tool/releases/tag/1.8.0-beta.1)**
+**[View Full Release Notes](https://github.com/alexafshar/config-assessment-tool/releases/tag/1.8.0-beta.1)**
 
 ## Table of Contents
 - [1. Using Docker (Recommended)](#1-using-docker-recommended)
@@ -28,8 +28,8 @@ This document provides a quick-start guide for the 1.8.0-beta.1 release. This be
 This is the easiest way to run the tool using Docker. The only prerequisite is a local installation of the Docker engine or Docker desktop and access to the shell Terminal.
 
 1.  **Download or Clone the Source:**
-    *   Download the Source Code (zip/tar.gz) from the **[Releases Page](https://github.com/Appdynamics/config-assessment-tool/releases/tag/1.8.0-beta.1)**.
-    *   *OR* if you have git installed, clone the repository: `git clone https://github.com/Appdynamics/config-assessment-tool.git`
+    *   Download the Source Code (zip/tar.gz) from the **[Releases Page](https://github.com/alexafshar/config-assessment-tool/releases/tag/1.8.0-beta.1)**.
+    *   *OR* if you have git installed, clone the repository: `git clone https://github.com/alexafshar/config-assessment-tool.git`
 
 2.  **Unzip the source if downloaded. Bring up a Shell Terminal and navigate to the directory change into the project directory:**
     ```bash
