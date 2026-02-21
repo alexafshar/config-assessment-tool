@@ -35,9 +35,10 @@ jobs:
           # This is critical for Apple Silicon (M1/M2) support
           echo "Applying ad-hoc code signature to bundled binaries..."
           find appdynamics -name "*.so" -o -name "*.dylib" -o -name "Python" | xargs codesign --force -s - --preserve-metadata=identifier,entitlements
-          codesign --force --deep -s - appdynamics/config-assessment-tool/*/config-assessment-tool
+          # The directory name is dynamic (includes version), so wildcard matching is used
+          codesign --force --deep -s - appdynamics/config-assessment-tool-*/config-assessment-tool
 
-          # Determine the name of the PyInstaller created directory (e.g., 'config-assessment-tool')
+          # Determine the name of the PyInstaller created directory (e.g., 'config-assessment-tool-macosx-1.8.0')
           # Assumes PyInstaller creates a single top-level directory inside appdynamics/
           BUNDLE_DIR_PATH=$(find appdynamics -maxdepth 1 -mindepth 1 -type d)
           BUNDLE_DIR_NAME=$(basename "$BUNDLE_DIR_PATH")
