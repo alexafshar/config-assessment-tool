@@ -6,7 +6,7 @@ This document provides a quick-start guide for the 1.8.0-beta.1 release. This be
 
 ## Table of Contents
 There are multiple ways to run the tool
-- [1. Using Docker](#1-using-docker-recommended)
+- [1. Using Docker](#1-using-docker)
     - [Option A: Using Shell Script (Easier)](#option-a-using-shell-script-easier)
     - [Option B: Manual Docker Command (Advanced)](#option-b-manual-docker-command-advanced)
         - [Run the UI](#run-the-ui-frontend--backend)
@@ -60,12 +60,13 @@ If you prefer to run `docker` directly without downloading the source and runnin
 configuration-assessment-tool/
 ├── input
 │   ├── jobs
-│   │   └── YourJobFile.json
+│   │   └── DefaultJob.json
 │   └── thresholds
 │       └── DefaultThresholds.json
 ├── logs
 └── output
 ```
+*You may download to use in your setup the following samples: [DefaultJob.json](input/jobs/DefaultJob.json) and [DefaultThresholds.json](input/thresholds/DefaultThresholds.json)*
 
 ### Run the UI (Frontend + Backend)
 Assuming the above directory structure:
