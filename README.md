@@ -38,18 +38,18 @@ This is the easiest way to run the tool using Docker. The only prerequisite is a
 
 2.  **Unzip the source if downloaded. In a shell Terminal, navigate to the directory:**
     ```bash
-    cd config-assessment-tool
+    $ cd config-assessment-tool
     ```
 
 **Run the Tool using the provided shell script in the downloaded/cloned source:**
 
 **UI mode: Start the UI:**
 ```bash
-./config-assessment-tool.sh docker --ui
+$ ./config-assessment-tool.sh docker --ui
 ```
 **Headless mode: Run Headless:**
 ```bash
-./config-assessment-tool.sh docker -j DefaultJob
+$ ./config-assessment-tool.sh docker -j DefaultJob
 ```
 
 ## Option B: Manual Docker Command (Advanced)
@@ -70,10 +70,10 @@ configuration-assessment-tool/
 ### Run the UI (Frontend + Backend)
 Assuming the above directory structure:
    ```bash
-    cd config-assessment-tool
+   $ cd config-assessment-tool
    ```
 ```bash
-docker run \
+$ docker run \
   --name "cat-tool-beta" \
   --rm \
   -p 8501:8501 \
@@ -87,7 +87,7 @@ docker run \
 ### Run Headless (Backend Only)
 Pass backend arguments directly (e.g., `-j`).
 ```bash
-docker run \
+$ docker run \
   --name "cat-tool-beta-backend" \
   --rm \
   -v "$(pwd)/input":/app/input \
@@ -107,7 +107,36 @@ $ docker run ghcr.io/alexafshar/config-assessment-tool:1.8.0-beta.1 --help
 
 # 2. Platform Executable (Standalone Binary)
 
-If you have meant the standalone binaries downloadable from the Releases page (Windows .zip or Linux .tgz):
+Download the executable bundle for your platform from the [Release Page](https://github.com/alexafshar/config-assessment-tool/releases/tag/1.8.0-beta.1)
+
+## UI Mode
+*Note: Beta binaries contain the Web UI. You can launch it using `--ui` command line option 
+1.  Run the executable with the `--ui` flag:
+    *   **macOS**:
+        > **Note:** macOS binaries need to go through Apple's certificaiton process before they run unhindered on your local macOS machine. To bypass certification you must remove the quarantine attribute from the downloaded bundle otherwise macOS will prevent it from running. This is a one time process when you download a new bundle.
+        1. Unzip the downloaded bundle and open a Terminal and navigate to the directory containing the extracted files.
+        2. Navigate into the directory if you haven't already:
+            ```bash
+            $ cd config-assessment-tool-macosx-*
+            ```
+        2.  Run the following command to allow the application to run:
+            ```bash
+            $ sudo xattr -rd com.apple.quarantine .     # this removes quarantine attribute for all files in current directory
+            ```
+2.  Navigate into the directory of extracted bundle if you haven't already:
+    ```bash
+    $ cd config-assessment-tool-<platform>-1.8.0-beta.1  # platform is specific to your OS
+    ```
+3.  Look for the executable file ```config-assessment-tool``` and run the tool with the UI flag:
+    ```bash
+      $ ./config-assessment-tool --ui
+    ```
+    For example:
+       *   **macOS**: `$ ./config-assessment-tool --ui`
+       *   **Linux**: `$ ./config-assessment-tool --ui`
+       *   **Windows**: `PS> .\config-assessment-tool.exe --ui`
+<br><br> 
+4. Open your browser to the URL displayed in the console (typically `http://localhost:8501`). If running on a remote server, replace `localhost` with the server's IP address.
 
 ## Headless Mode
 1.  Navigate to the directory where you extracted the release.
@@ -117,7 +146,7 @@ If you have meant the standalone binaries downloadable from the Releases page (W
         1.  Open a Terminal and navigate to the directory containing the unzipped folder.
         2.  Run the following command to allow the application to run:
             ```bash
-            $ sudo xattr -rd com.apple.quarantine config-assessment-tool-macosx-*
+            $ sudo xattr -rd com.apple.quarantine .     # this removes quarantine attribute for all files in current directory
             ```
         3.  Navigate into the directory:
             ```bash
@@ -127,23 +156,14 @@ If you have meant the standalone binaries downloadable from the Releases page (W
             ```bash
             $ ./config-assessment-tool -j DefaultJob
             ```
+    For example:
+    *   **macOS**: `./config-assessment-tool -j <job-file>`
     *   **Linux**: `./config-assessment-tool -j <job-file>`
-    *   **Windows**: `.\config-assessment-tool.exe -j <job-file>`
-
-## UI Mode
-*Note: Beta binaries contain the UI. You can launch it using `--ui` or `--run`.*
-1.  Run the executable with the flag:
-    *   **macOS**:
-        *(**Follow the quarantine removal steps in the Headless Mode section above if you haven't already)*
-        ```bash
-        $ ./config-assessment-tool --ui
-        ```
-    *   **Linux**: `./config-assessment-tool --ui`
-    *   **Windows**: `.\config-assessment-tool.exe --ui`
-2.  Open your browser to the URL displayed in the console (typically `http://localhost:8501`).
+    *   **Windows**: `PS> .\config-assessment-tool.exe -j <job-file>`
 
 ## Getting Help
 Display the available command line arguments.
+*   **macOS**: `./config-assessment-tool --help`
 *   **Linux**: `./config-assessment-tool --help`
 *   **Windows**: `.\config-assessment-tool.exe --help`
 
@@ -151,16 +171,25 @@ Display the available command line arguments.
 
 # 3. Running from source (`config-assessment-tool.sh`) 
 
-The `config-assessment-tool.sh` script is the recommended way to run the tool on macOS and Linux once you have the source locally. 
+The `config-assessment-tool.sh` script is the recommended way to run the tool on macOS and Linux once you have the source code download or cloned locally. 
 
 ## Prerequisites
-*   **Docker** (Recommended for UI & Headless modes)
-*   *OR* Python 3.12+ with Pipenv (for source mode)
+*   **Docker** If using the script to run the docker image (recommended for most users)
+*   *OR* Python 3.12+ with Pipenv if running from source without docker (advanced users or those with specific custom needs)
 
 ## Usage
+**Get the source code** 
+- Download the Source Code (zip/tar.gz) from the **[Releases Page](https://github.com/alexafshar/config-assessment-tool/releases/tag/1.8.0-beta.1)**.
+- *OR* if you have git installed, clone the repository: `git clone https://github.com/alexafshar/config-assessment-tool.git`
+
+**Unzip the source if necessary. In a shell Terminal, navigate to the directory of expanded source**
+
+```bash
+$ cd config-assessment-tool
+```
 
 **Start the User Interface (UI):**
-This will launch the Web UI in your default browser.
+   - This will launch the Web UI in your default browser where you can select which job to run.
 ```bash
 # Using Docker
 ./config-assessment-tool.sh docker --ui
@@ -171,15 +200,15 @@ This will launch the Web UI in your default browser.
 $ ./config-assessment-tool.sh --ui
 ```
 
-**Run Headless (Backend Only):**
-Run the assessment directly without the UI.
+**Run Headless (no Web UI):** 
+   - Run the assessment directly without the UI. This will run CAT and output the generated report files to the output directory and terminate once done. 
 ```bash
 # Using Docker
-$ ./config-assessment-tool.sh docker -j <job-file-name>
+$ ./config-assessment-tool.sh docker -j <job-file-name>   # dont include the .json extension 
 # Example: ./config-assessment-tool.sh docker -j MyJob
 
 # From Source
-$ ./config-assessment-tool.sh -j <job-file-name>
+$ ./config-assessment-tool.sh -j <job-file-name>   # dont include the .json extension
 ```
 
 ## Plugin Management
@@ -207,7 +236,7 @@ $ ./config-assessment-tool.sh --help
 
 # 4. Configuration (Important)
 
-Job files are configured as below.  There is a default job file provided at `input/jobs/DefaultJob.json` that you can edit with your controller credentials and settings. You can also create a new job file by copying this default one and editing as needed. If you are using the Web UI, you can also create a job file directly from the UI which will save them into the `input/jobs` directory using the hostname as the job file name however if subsequent edits to the file is needed, you will need to edit the file directly.
+Job files are configured as below.  There is a default job file provided in the source code at `input/jobs/DefaultJob.json` that you can edit with your controller credentials and settings. You can also create a new job file by copying this default one and editing as needed. If you are using the Web UI, you can also create a job file directly from the UI which will save them into the `input/jobs` directory using the hostname as the job file name however if subsequent edits to the file is needed, you will need to edit the file directly.
 
 Edit `input/jobs/DefaultJob.json` (or your custom job file):
 
