@@ -23,7 +23,7 @@ This document provides a quick-start guide for the 1.8.0-beta.1 release. This be
     - [Authentication Options (`authType`)](#authentication-options-authtype)
 
 # 1. Using Docker (Recommended)
-*Node: Docker instructions are for MacOS/Linux. Windows coming soon. Use executable bundle for Windows in the meantime or run from source*  
+*Node: Docker instructions are for MacOS/Linux. Windows PowerShell runbook instructions is coming soon. Use executable bundle for Windows in the meantime or run from source*  
 
 This is the easiest way to run the tool using Docker. The only prerequisite is a local installation of the Docker engine or Docker desktop and access to the shell Terminal.
 
@@ -31,12 +31,12 @@ This is the easiest way to run the tool using Docker. The only prerequisite is a
     *   Download the Source Code (zip/tar.gz) from the **[Releases Page](https://github.com/alexafshar/config-assessment-tool/releases/tag/1.8.0-beta.1)**.
     *   *OR* if you have git installed, clone the repository: `git clone https://github.com/alexafshar/config-assessment-tool.git`
 
-2.  **Unzip the source if downloaded. Bring up a Shell Terminal and navigate to the directory change into the project directory:**
+2.  **Unzip the source if downloaded. In a shell Terminal, navigate to the directory:**
     ```bash
     cd config-assessment-tool
     ```
 
-3.  **Run the Tool:**
+3.  **Run the Tool using the provided shell script in the downloaded/cloned source:**
 
     **UI mode: Start the UI:**
     ```bash
@@ -48,10 +48,9 @@ This is the easiest way to run the tool using Docker. The only prerequisite is a
     ```
 
 ### Manual Docker Command (Advanced)
-If you prefer to run `docker` directly without downloading the source and running the shell script, you must manually mount the required directories that `docker` uses to find the job files or output log files to.
+If you prefer to run `docker` directly without downloading the source and running the provided shell script, you must provide the required docker command line options to map the local directories to the docker container directories so that CAT running in the container can find the job files or output and log files.
 
-**Required Directory Structure:**
-Ensure your local directory from where you run the docker command has the below directory structure before running the container: 
+**Suggested Directory Structure:**
 ```text
 configuration-assessment-tool/
 ├── input
@@ -64,6 +63,7 @@ configuration-assessment-tool/
 ```
 
 ## Run the UI (Frontend + Backend)
+Assuming the above directory structure:
    ```bash
     cd config-assessment-tool
    ```
