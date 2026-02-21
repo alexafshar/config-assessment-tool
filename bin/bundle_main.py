@@ -81,6 +81,14 @@ if __name__ == "__main__":
         if backend_path not in sys.path:
             sys.path.append(backend_path)
 
+        # Set SSL_CERT_FILE to the bundled certifi cacert.pem
+        # PyInstaller bundles certifi's cacert.pem in 'certifi/cacert.pem' relative to _MEIPASS
+        cert_path = os.path.join(sys._MEIPASS, 'certifi', 'cacert.pem')
+        if os.path.exists(cert_path):
+            os.environ['SSL_CERT_FILE'] = cert_path
+            os.environ['REQUESTS_CA_BUNDLE'] = cert_path
+            # print(f"Setting SSL CA Bundle to: {cert_path}") # Debug only
+
     # Check for UI flags
     if "--ui" in sys.argv or "--run" in sys.argv:
         run_ui()

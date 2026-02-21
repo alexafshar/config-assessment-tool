@@ -10,6 +10,7 @@ This document provides a quick-start guide for the 1.8.0-beta.1 release. This be
     - [Run Headless (Backend Only)](#run-headless-backend-only)
     - [Getting Help](#getting-help)
 - [2. Platform Executable (Standalone Binary)](#2-platform-executable-standalone-binary)
+    - [macOS](#macos)
     - [Headless Mode](#headless-mode)
     - [UI Mode](#ui-mode)
     - [Getting Help](#getting-help-1)
@@ -107,12 +108,32 @@ If you have meant the standalone binaries downloadable from the Releases page (W
 ## Headless Mode
 1.  Navigate to the directory where you extracted the release.
 2.  Run the executable:
+    *   **macOS**:
+        > **Note:** macOS binaries need to go through Apple's certificaiton process before they run unhindered on your local macOS machine. To bypass certification you must remove the quarantine attribute from the downloaded bundle otherwise macOS will prevent it from running. This is a one time process when you download a new bundle. 
+        1.  Open a Terminal and navigate to the directory containing the unzipped folder.
+        2.  Run the following command to allow the application to run:
+            ```bash
+            sudo xattr -rd com.apple.quarantine config-assessment-tool-macosx-*
+            ```
+        3.  Navigate into the directory:
+            ```bash
+            cd config-assessment-tool-macosx-*
+            ```
+        4.  Run the tool:
+            ```bash
+            ./config-assessment-tool -j DefaultJob
+            ```
     *   **Linux**: `./config-assessment-tool -j <job-file>`
     *   **Windows**: `.\config-assessment-tool.exe -j <job-file>`
 
 ## UI Mode
 *Note: Beta binaries contain the UI. You can launch it using `--ui` or `--run`.*
 1.  Run the executable with the flag:
+    *   **macOS**:
+        *(**Follow the quarantine removal steps in the Headless Mode section above if you haven't already)*
+        ```bash
+        ./config-assessment-tool --ui
+        ```
     *   **Linux**: `./config-assessment-tool --ui`
     *   **Windows**: `.\config-assessment-tool.exe --ui`
 2.  Open your browser to the URL displayed in the console (typically `http://localhost:8501`).
