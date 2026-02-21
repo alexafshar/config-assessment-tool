@@ -5,12 +5,11 @@ This document provides a quick-start guide for the 1.8.0-beta.1 release. This be
 **[View Full Release Notes](https://github.com/Appdynamics/config-assessment-tool/releases/tag/1.8.0-beta.1)**
 
 ## Table of Contents
-- [1. Direct Docker Usage](#1-direct-docker-usage)
+- [1. Using Docker (Recommended)](#1-using-docker-recommended)
     - [Run the UI (Frontend + Backend)](#run-the-ui-frontend--backend)
     - [Run Headless (Backend Only)](#run-headless-backend-only)
     - [Getting Help](#getting-help)
 - [2. Platform Executable (Standalone Binary)](#2-platform-executable-standalone-binary)
-    - [macOS](#macos)
     - [Headless Mode](#headless-mode)
     - [UI Mode](#ui-mode)
     - [Getting Help](#getting-help-1)
