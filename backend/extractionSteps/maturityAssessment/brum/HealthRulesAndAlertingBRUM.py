@@ -5,7 +5,7 @@ from collections import OrderedDict
 from backend.api.appd.AppDService import AppDService
 from deepdiff import DeepDiff
 from backend.extractionSteps.JobStepBase import JobStepBase
-from util.asyncio_utils import AsyncioUtils
+from backend.util.asyncio_utils import AsyncioUtils
 
 
 logger = logging.getLogger(__name__.split('.')[-1])

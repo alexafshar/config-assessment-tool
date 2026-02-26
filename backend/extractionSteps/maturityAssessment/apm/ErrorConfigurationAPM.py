@@ -3,8 +3,8 @@ from collections import OrderedDict
 
 from backend.api.appd.AppDService import AppDService
 from backend.extractionSteps.JobStepBase import JobStepBase
-from util.asyncio_utils import AsyncioUtils
-from util.stdlib_utils import substringBetween
+from backend.util.asyncio_utils import AsyncioUtils
+from backend.util.stdlib_utils import substringBetween
 
 
 logger = logging.getLogger(__name__.split('.')[-1])
