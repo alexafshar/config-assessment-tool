@@ -93,6 +93,9 @@ jobs:
 
       # Standardize on -windows suffix for consistent intermediary tags
       # Ensure IMAGE_NAME is lowercase primarily for the manual docker build command
+      # Note: We use the default docker builder here, not buildx, because setup-buildx-action
+      # fails to start the buildkit container on Windows runners (which run in Windows container mode).
+      # The default 'docker build' command works fine for Windows images.
       - name: Build and push Windows image
         run: |
           docker build -f Dockerfile-windows -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ steps.meta.outputs.version }}-windows .

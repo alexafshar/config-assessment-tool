@@ -3,7 +3,7 @@ from collections import OrderedDict
 from datetime import datetime
 
 from backend.extractionSteps.JobStepBase import JobStepBase
-from util.stdlib_utils import get_recursively
+from backend.util.stdlib_utils import get_recursively
 
 
 logger = logging.getLogger(__name__.split('.')[-1])
