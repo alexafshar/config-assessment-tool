@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from pathlib import Path
 from typing import Optional
 
@@ -39,16 +40,30 @@ async def run_assessment(
 ) -> dict:
     initLogging(debug)
     engine = Engine(job_file, thresholds_file, concurrent_connections, username, password, auth_method)
-    await engine.run()
+    try:
+        await engine.run()
+    except SystemExit:
+        pass  # Engine calls sys.exit(0) on success, which we want to ignore in server mode
     output_dir = _repo_root() / "output" / job_file
+
+    # Find the generated report
+    report_file = next(output_dir.glob("*ConfigurationAnalysisReport.xlsx"), None)
+    file_data = None
+    file_name = None
+    if report_file:
+        file_name = report_file.name
+        with open(report_file, "rb") as f:
+            file_data = base64.b64encode(f.read()).decode("utf-8")
+
     return {
         "status": "completed",
         "job_file": job_file,
         "thresholds_file": thresholds_file,
         "output_dir": str(output_dir),
+        "file_name": file_name,
+        "file_content": file_data,
     }
 
 
 if __name__ == "__main__":
     mcp.run()
-

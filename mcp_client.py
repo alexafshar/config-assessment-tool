@@ -4,6 +4,7 @@ import subprocess
 import sys
 import json
 import uuid
+import base64
 
 # Path to the server script
 SERVER_SCRIPT = os.path.join(os.path.dirname(__file__), "mcp_server.py")
@@ -72,9 +73,38 @@ async def run_client():
     response = await read_response()
     print(f"Call tool response: {json.dumps(response, indent=2)}")
 
+    # 5. Call run_assessment tool
+    print("Calling run_assessment tool...")
+    req_id = await send_request("tools/call", {
+        "name": "run_assessment",
+        "arguments": {
+            "job_file": "DefaultJob",
+            "debug": False
+        }
+    })
+
+    response = await read_response()
+    print(f"Call run_assessment response: {json.dumps(response, indent=2)}")
+
+    # Extract and save the file
+    if response and "result" in response and "content" in response["result"]:
+        content_block = response["result"]["content"][0]
+        if content_block["type"] == "text":
+            result_data = json.loads(content_block["text"])
+            if "file_content" in result_data and result_data["file_content"]:
+                file_name = result_data.get("file_name", "report.xlsx")
+                file_data = base64.b64decode(result_data["file_content"])
+
+                download_dir = os.path.join(os.path.dirname(__file__), "Downloads")
+                os.makedirs(download_dir, exist_ok=True)
+                file_path = os.path.join(download_dir, file_name)
+
+                with open(file_path, "wb") as f:
+                    f.write(file_data)
+                print(f"Saved report to {file_path}")
+
     process.terminate()
     print("Test complete")
 
 if __name__ == "__main__":
     asyncio.run(run_client())
-
