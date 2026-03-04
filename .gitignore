@@ -9,3 +9,4 @@
 .venv
 .git-bitbucket
 __pycache__
+properties.py

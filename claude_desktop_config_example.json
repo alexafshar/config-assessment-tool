@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "config-assessment-tool": {
+      "command": "python3",
+      "args": [
+        "/Users/aleafsha/projects/ad/cat171-fork/mcp_server.py"
+      ]
+    }
+  }
+}
+

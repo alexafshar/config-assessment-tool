@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import base64
+import json
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
+import mcp.types as types
 from mcp.server.fastmcp import FastMCP
 
 from backend.core.Engine import Engine
@@ -37,8 +39,18 @@ async def run_assessment(
     username: Optional[str] = None,
     password: Optional[str] = None,
     auth_method: Optional[str] = None,
-) -> dict:
+) -> list[Union[types.TextContent, types.EmbeddedResource]]:
     initLogging(debug)
+
+    # Ensure job files exist before initializing Engine to prevent SystemExit crash
+    jobs_dir = _jobs_dir()
+    target_job_file = jobs_dir / f"{job_file}.json"
+    if not target_job_file.exists():
+        return [types.TextContent(
+            type="text",
+            text=f"Error: Job file '{job_file}' not found at {target_job_file}. Please check the job name."
+        )]
+
     engine = Engine(job_file, thresholds_file, concurrent_connections, username, password, auth_method)
     try:
         await engine.run()
@@ -48,21 +60,36 @@ async def run_assessment(
 
     # Find the generated report
     report_file = next(output_dir.glob("*ConfigurationAnalysisReport.xlsx"), None)
-    file_data = None
-    file_name = None
-    if report_file:
-        file_name = report_file.name
-        with open(report_file, "rb") as f:
-            file_data = base64.b64encode(f.read()).decode("utf-8")
 
-    return {
+    content_list = []
+
+    # Add text summary
+    summary = {
         "status": "completed",
         "job_file": job_file,
         "thresholds_file": thresholds_file,
-        "output_dir": str(output_dir),
-        "file_name": file_name,
-        "file_content": file_data,
+        "output_dir": str(output_dir)
     }
+    content_list.append(types.TextContent(
+        type="text",
+        text=json.dumps(summary, indent=2)
+    ))
+
+    # Add file resource if it exists
+    if report_file:
+        with open(report_file, "rb") as f:
+            file_data = base64.b64encode(f.read()).decode("utf-8")
+
+        content_list.append(types.EmbeddedResource(
+            type="resource",
+            resource=types.BlobResourceContents(
+                uri=f"file:///{report_file.name}",
+                mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                blob=file_data
+            )
+        ))
+
+    return content_list
 
 
 if __name__ == "__main__":

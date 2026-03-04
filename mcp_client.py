@@ -88,20 +88,20 @@ async def run_client():
 
     # Extract and save the file
     if response and "result" in response and "content" in response["result"]:
-        content_block = response["result"]["content"][0]
-        if content_block["type"] == "text":
-            result_data = json.loads(content_block["text"])
-            if "file_content" in result_data and result_data["file_content"]:
-                file_name = result_data.get("file_name", "report.xlsx")
-                file_data = base64.b64decode(result_data["file_content"])
+        for content_block in response["result"]["content"]:
+            if content_block.get("type") == "resource":
+                resource = content_block.get("resource", {})
+                if "blob" in resource:
+                    file_name = resource.get("uri", "report.xlsx").split("/")[-1]
+                    file_data = base64.b64decode(resource["blob"])
 
-                download_dir = os.path.join(os.path.dirname(__file__), "Downloads")
-                os.makedirs(download_dir, exist_ok=True)
-                file_path = os.path.join(download_dir, file_name)
+                    download_dir = os.path.join(os.path.dirname(__file__), "Downloads")
+                    os.makedirs(download_dir, exist_ok=True)
+                    file_path = os.path.join(download_dir, file_name)
 
-                with open(file_path, "wb") as f:
-                    f.write(file_data)
-                print(f"Saved report to {file_path}")
+                    with open(file_path, "wb") as f:
+                        f.write(file_data)
+                    print(f"Saved resource to {file_path}")
 
     process.terminate()
     print("Test complete")
