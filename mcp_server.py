@@ -45,11 +45,29 @@ async def run_assessment(
     # Ensure job files exist before initializing Engine to prevent SystemExit crash
     jobs_dir = _jobs_dir()
     target_job_file = jobs_dir / f"{job_file}.json"
+
     if not target_job_file.exists():
-        return [types.TextContent(
-            type="text",
-            text=f"Error: Job file '{job_file}' not found at {target_job_file}. Please check the job name."
-        )]
+        # Try to find a matching file (fuzzy search)
+        # 1. Check if user provided filename with extension
+        if (jobs_dir / job_file).exists():
+             target_job_file = jobs_dir / job_file
+             job_file = target_job_file.stem
+        else:
+             # 2. Search for json files containing the name
+             candidates = list(jobs_dir.glob(f"*{job_file}*.json"))
+             if len(candidates) == 1:
+                 target_job_file = candidates[0]
+                 job_file = target_job_file.stem
+             elif len(candidates) > 1:
+                 return [types.TextContent(
+                     type="text",
+                     text=f"Error: Job name '{job_file}' is ambiguous. Found matches: {[c.stem for c in candidates]}. Please be more specific."
+                 )]
+             else:
+                 return [types.TextContent(
+                     type="text",
+                     text=f"Error: Job file '{job_file}' not found at {target_job_file}. Please check the job name."
+                 )]
 
     engine = Engine(job_file, thresholds_file, concurrent_connections, username, password, auth_method)
     try:

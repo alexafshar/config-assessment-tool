@@ -103,6 +103,26 @@ async def run_client():
                         f.write(file_data)
                     print(f"Saved resource to {file_path}")
 
+    # 6. Call run_assessment with partial name (testing fix)
+    print("Calling run_assessment tool with partial name 'appd-cs-global'...")
+    req_id = await send_request("tools/call", {
+        "name": "run_assessment",
+        "arguments": {
+            "job_file": "appd-cs-global",
+            "debug": False
+        }
+    })
+
+    response = await read_response()
+    print(f"Call run_assessment (partial name) response: {json.dumps(response, indent=2)}")
+
+    if response and "result" in response and "content" in response["result"]:
+         for content_block in response["result"]["content"]:
+             if content_block.get("type") == "resource":
+                 resource = content_block.get("resource", {})
+                 # Handle resource saving similarly... (reusing existing logic maybe or just printing confirmation)
+                 print(f"Received resource from partial job text: {resource.get('uri')}")
+
     process.terminate()
     print("Test complete")
 
