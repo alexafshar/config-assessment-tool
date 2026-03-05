@@ -30,7 +30,7 @@ async def list_tools_schema(session):
     return tools_schema
 
 # Helper to get the Bearer token using credentials in properties.py
-async def get_circut_token():
+async def get_circuit_token():
     print(f"🔑 Authenticating with {properties.OAUTH_ENDPOINT}...")
     async with httpx.AsyncClient() as client:
         payload = {
@@ -64,8 +64,8 @@ async def run_client():
             tools = await list_tools_schema(session)
             print(f"\nConnected to MCP Server. Found tools: {[t['function']['name'] for t in tools]}")
 
-            # 3. Authenticate with CIRCUT
-            token = await get_circut_token()
+            # 3. Authenticate with CIRCUIT
+            token = await get_circuit_token()
 
             # 4. Configure LLM Client (using properties)
             aclient = AsyncAzureOpenAI(
@@ -80,7 +80,7 @@ async def run_client():
                 {"role": "system", "content": "You are a helpful assistant assisting with Network Configuration Assessments. You can run assessments and analyze the resulting Excel reports."}
             ]
 
-            print("\n💬 Entering chat mode with CIRCUT. Type 'quit' to exit.")
+            print("\n💬 Entering chat mode with CIRCUIT. Type 'quit' to exit.")
 
             while True:
                 user_input = input("\nUser: ")
@@ -166,11 +166,11 @@ async def run_client():
                         user=f'{{"appkey": "{properties.CIRCUIT_LLM_API_APP_KEY}"}}'
                     )
                     final_text = final_response.choices[0].message.content
-                    print(f"CIRCUT: {final_text}")
+                    print(f"CIRCUIT: {final_text}")
                     messages.append(final_response.choices[0].message)
 
                 else:
-                    print(f"CIRCUT: {message.content}")
+                    print(f"CIRCUIT: {message.content}")
 
 if __name__ == "__main__":
     asyncio.run(run_client())
