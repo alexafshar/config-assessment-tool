@@ -1,6 +1,6 @@
 # Architecture: Health Check Job Execution Flow
 
-This diagram illustrates the process of running a health check job via CIRCUT and the MCP Server, focusing on the data flow and report generation.
+This diagram illustrates the process of running a health check job via CIRCUIT and the MCP Server, focusing on the data flow and report generation.
 
 ```mermaid
 graph TD
@@ -8,7 +8,7 @@ graph TD
     User([User])
     style User fill:#fff,stroke:#333,stroke-width:2px
     
-    subgraph UI_Layer [CIRCUT Interface]
+    subgraph UI_Layer [CIRCUIT Interface]
         style UI_Layer fill:#eef,stroke:#333
         Prompt[Prompt: 'Run Health Check']
         Download[Download Attachments]
