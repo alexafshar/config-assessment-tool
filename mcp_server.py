@@ -77,7 +77,10 @@ async def run_assessment(
     output_dir = _repo_root() / "output" / job_file
 
     # Find the generated report
-    report_file = next(output_dir.glob("*ConfigurationAnalysisReport.xlsx"), None)
+    # Priority: MaturityAssessment-apm.xlsx, then fall back to ConfigurationAnalysisReport.xlsx or any xlsx
+    report_file = next(output_dir.glob("*-MaturityAssessment-apm.xlsx"), None)
+    if not report_file:
+         report_file = next(output_dir.glob("*ConfigurationAnalysisReport.xlsx"), None)
 
     content_list = []
 

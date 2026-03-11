@@ -77,7 +77,16 @@ async def run_client():
             )
 
             messages = [
-                {"role": "system", "content": "You are a helpful assistant assisting with Network Configuration Assessments. You can run assessments and analyze the resulting Excel reports."}
+                {"role": "system", "content": """You are the Network Assessment Assistant.
+Your Goal: Run assessments and answer questions based on the generated Excel reports.
+
+CRITICAL INSTRUCTION - READ CAREFULLY:
+The output of 'run_assessment' is a text-converted Excel report that appears in history starting with: "[System: Uploaded Excel file content]".
+Once this content is in the chat history, YOU HAVE THE DATA.
+DO NOT run the 'run_assessment' tool again to answer follow-up questions about the same job.
+1. SEARCH HISTORY: Look for "[System: Uploaded Excel file content]".
+2. USE CONTEXT: Read that existing text to answer the user.
+3. EXCEPTION: Only run the tool if the user asks for a *new* job name or explicitly commands a "re-run" or "update"."""}
             ]
 
             print("\n💬 Entering chat mode with CIRCUIT. Type 'quit' to exit.")
@@ -143,9 +152,10 @@ async def run_client():
                                         for sheet_name, df in df_dict.items():
                                             if not df.empty:
                                                 summary += f"\nSheet: {sheet_name}\n"
-                                                summary += df.head(5).to_markdown(index=False)
+                                                summary += df.to_markdown(index=False)
 
                                         tool_output_text += f"\n[System: Uploaded Excel file content]\n{summary}"
+                                        tool_output_text += "\n\n[System Message: The data above is the complete report. Use this data to answer all follow-up questions about this job. Do not re-run the tool.]"
                                     except Exception as e:
                                         print(f"   > Error reading excel: {e}")
                                         tool_output_text += f"[System: Error reading excel bytes: {e}]"
