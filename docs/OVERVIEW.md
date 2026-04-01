@@ -43,7 +43,7 @@ Consult the links below for the aforementioned references:
 ## Web UI flow
 ```mermaid
 graph TD
-    User[User] --> UI[Streamlit UI]
+    User[User] --> UI[Web UI]
     UI --> Backend[Backend Engine]
     Controller[AppDynamics Controller APIs] --> Backend
     Backend --> Reports[Excel / PPT Reports]
@@ -74,6 +74,6 @@ graph TD
 
 ## Related references
 
-- Installation and operations: [`docs/RUNBOOK.md`](docs/RUNBOOK.md)
-- Troubleshooting: [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
+- Installation and operations: [`RUNBOOK.md`](RUNBOOK.md)
+- Troubleshooting: [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)
 
