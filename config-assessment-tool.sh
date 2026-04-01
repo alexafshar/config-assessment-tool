@@ -34,7 +34,7 @@ fi
 if [[ -n "$CAT_REPO_OWNER" ]]; then
   REPO_OWNER="$CAT_REPO_OWNER"
 elif [[ -z "$DETECTED_OWNER" ]]; then
-  REPO_OWNER="alexafshar"
+  REPO_OWNER="Appdynamics"
 else
   REPO_OWNER="$DETECTED_OWNER"
 fi

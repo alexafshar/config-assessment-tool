@@ -131,7 +131,7 @@ docker run \
   -v <config-assessment-tool-directory>/logs:/app/logs \
   -p 8501:8501 \
   --rm \
-  ghcr.io/alexafshar/config-assessment-tool:latest --ui
+  ghcr.io/Appdynamics/config-assessment-tool:latest --ui
 ```
 
 Windows PowerShell:
@@ -144,7 +144,7 @@ docker run `
   -v <config-assessment-tool-directory>/logs:/app/logs `
   -p 8501:8501 `
   --rm `
-  ghcr.io/alexafshar/config-assessment-tool:latest --ui
+  ghcr.io/Appdynamics/config-assessment-tool:latest --ui
 ```
 
 ### Use headless mode
@@ -156,13 +156,13 @@ docker run \
   -v <config-assessment-tool-directory>/output:/app/output \
   -v <config-assessment-tool-directory>/logs:/app/logs \
   --rm \
-  ghcr.io/alexafshar/config-assessment-tool:latest -j DefaultJob -t DefaultThresholds
+  ghcr.io/Appdynamics/config-assessment-tool:latest -j DefaultJob -t DefaultThresholds
 ```
 
 ### Getting help
 
 ```bash
-docker run ghcr.io/alexafshar/config-assessment-tool:latest --help
+docker run ghcr.io/Appdynamics/config-assessment-tool:latest --help
 ```
 
 ---
