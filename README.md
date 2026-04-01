@@ -14,7 +14,7 @@ This document provides a quick-start guide for the 1.8.0 release. This release i
 
 ## Overview
 
-Config Assessment Tool helps evaluate AppDynamics instrumentation and configuration health, then generates report artifacts your team can use for analysis and follow-up actions. For a more detailed tool overview and architecture, see [`General Description`](TOOL_OVERVIEW.md#general-description).
+Config Assessment Tool helps evaluate AppDynamics instrumentation and configuration health, then generates report artifacts your team can use for analysis and follow-up actions. For a more detailed tool overview and architecture, see [`General Description`](docs/OVERVIEW.md#general-description).
 
 ---
 
