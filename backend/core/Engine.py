@@ -38,7 +38,7 @@ from backend.output.Archiver import Archiver
 from backend.output.PostProcessReport import PostProcessReport
 # from output.presentations.cxPpt import createCxPpt
 from backend.output.presentations.cxPptTemplate import createCxPpt as createCxPptTemplate
-from backend.output.presentations.cxPptFsoUseCases import createCxHamUseCasePpt
+
 from backend.output.reports.AgentMatrixReport import AgentMatrixReport
 from backend.output.reports.ConfigurationAnalysisReport import ConfigurationAnalysisReport
 from backend.output.reports.CustomMetricsReport import CustomMetricsReport
@@ -113,7 +113,7 @@ class Engine:
                 logger.warning(f"Unable to get latest tag from https://api.github.com/repos/appdynamics/config-assessment-tool/tags")
             else:
                 latestTag = json.loads(response.text)[0]["name"]
-                if latestTag != self.codebaseVersion:
+                if latestTag.lstrip("v") != self.codebaseVersion.lstrip("v"):
                     logger.warning(f"You are using an outdated version of the software. Current {self.codebaseVersion} Latest {latestTag}")
                     logger.warning("You can get the latest version from https://github.com/Appdynamics/config-assessment-tool/releases")
         except requests.exceptions.RequestException:
@@ -494,7 +494,6 @@ class Engine:
 
         # createCxPpt(self.jobFileName)
         createCxPptTemplate(self.jobFileName, self.output_dir)
-        createCxHamUseCasePpt(self.jobFileName, self.output_dir)
 
         logger.info(f"----------Complete----------")
         # if controllerData.json file exists, delete it

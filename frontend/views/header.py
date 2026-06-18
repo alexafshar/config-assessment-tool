@@ -4,6 +4,7 @@ import os
 import time
 import platform
 import subprocess
+from pathlib import Path
 
 import requests
 import streamlit as st
@@ -84,8 +85,19 @@ def open_folder_via_service(path: str):
             st.error(f"Failed to open folder directly: {e}")
 
 
+def _read_version() -> str:
+    """Read version string from the VERSION file at the project root."""
+    version_path = Path(__file__).resolve().parent.parent.parent / "VERSION"
+    try:
+        return version_path.read_text().strip()
+    except Exception:
+        return ""
+
+
 def header() -> tuple[bool, bool]:
     st.set_page_config(page_title="config-assessment-tool")
+
+    version = _read_version()
 
     top_col1, top_col2 = st.columns([8, 1])
     with top_col2:
@@ -142,7 +154,11 @@ def header() -> tuple[bool, bool]:
         unsafe_allow_html=True,
     )
 
-    st.title("config-assessment-tool")
+    version_suffix = f' <span style="font-size: 20px; font-weight: bold; color: #888;">({version})</span>' if version else ""
+    st.markdown(
+        f'<h1 style="text-align: center;">config-assessment-tool{version_suffix}</h1>',
+        unsafe_allow_html=True,
+    )
     st.markdown("---")
 
     col1, col2, col3 = st.columns(3)
