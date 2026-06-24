@@ -69,6 +69,32 @@ def excel_status_note(domain: str) -> str:
     return f"<br><span style='color:#9fb3c8;'>{status}</span>"
 
 
+def latest_summary_file(domain: str, controller: Optional[str] = None) -> Optional[str]:
+    prefix = f"analysis_summary_{domain.lower()}_"
+    if not os.path.isdir(RESULT_FOLDER):
+        return None
+
+    candidates = []
+    for name in os.listdir(RESULT_FOLDER):
+        if not (name.startswith(prefix) and name.endswith(".json")):
+            continue
+        if controller:
+            path = os.path.join(RESULT_FOLDER, name)
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    payload = json.load(f)
+                meta = payload.get("meta") or {}
+            except Exception:
+                continue
+            if _slug(meta.get("controller")) != _slug(controller):
+                continue
+        candidates.append(name)
+
+    if not candidates:
+        return None
+    return sorted(candidates)[-1]
+
+
 @app.route("/", methods=["GET"])
 def index():
     return render_template("index.html", active_tab="apm")
@@ -77,6 +103,11 @@ def index():
 @app.route("/insights", methods=["GET"])
 def insights():
     return render_template("insights.html")
+
+
+@app.route("/portfolio", methods=["GET"])
+def portfolio():
+    return render_template("portfolio.html")
 
 
 # ---------- APM upload (uses new compare_tool.service) -----------------------
@@ -394,6 +425,36 @@ def scan_runs(folder: str, domain: str, controller_filter: Optional[str], limit:
     return runs[:limit]
 
 
+def _run_sort_key(item):
+    return (
+        item.get("currentDate") or "",
+        item.get("compareDate") or "",
+        item.get("previousDate") or "",
+    )
+
+
+def fixed_baseline_runs(runs):
+    """
+    Keep only trend points that start from the earliest previousDate, de-dupe
+    repeated previous/current pairs, and order by currentDate.
+    """
+    prev_dates = [r.get("previousDate") for r in runs if r.get("previousDate")]
+    if not prev_dates:
+        return sorted(runs, key=_run_sort_key)
+
+    baseline = min(prev_dates)
+    deduped = {}
+    for run in runs:
+        if run.get("previousDate") != baseline:
+            continue
+        key = (run.get("previousDate") or "", run.get("currentDate") or "")
+        existing = deduped.get(key)
+        if not existing or (run.get("compareDate") or "") > (existing.get("compareDate") or ""):
+            deduped[key] = run
+
+    return sorted(deduped.values(), key=_run_sort_key)
+
+
 # ---------- Insights API stubs (match your JS expectations) ------------------
 # These should read/write JSON files under HISTORY_FOLDER.
 # For now, you can leave your existing implementations here and just
@@ -411,6 +472,7 @@ def api_history():
     domain = (request.args.get("domain") or "").lower()
     if domain not in ("apm", "brum", "mrum"):
         return jsonify({"error": "Invalid domain."}), 400
+    include_duplicates = (request.args.get("include_duplicates") or "").lower() in ("1", "true", "yes")
 
     folder = RESULT_FOLDER
     prefix = f"analysis_summary_{domain}_"   # <-- matches your filenames
@@ -443,6 +505,8 @@ def api_history():
             }
         )
 
+    items.sort(key=lambda x: x["timestamp"] or "", reverse=True)
+
     # optional controller filter
     controller_q = request.args.get("controller")
     if controller_q:
@@ -453,8 +517,54 @@ def api_history():
                 filtered.append(it)
         items = filtered
 
-    items.sort(key=lambda x: x["timestamp"] or "", reverse=True)
-    return jsonify({"domain": domain.upper(), "items": items})
+    duplicate_counts = {}
+    duplicate_files = {}
+    for item in items:
+        key = (
+            _slug(item.get("controller")),
+            item.get("prev") or "",
+            item.get("curr") or "",
+        )
+        duplicate_counts[key] = duplicate_counts.get(key, 0) + 1
+        duplicate_files.setdefault(key, []).append(item["file"])
+
+    for item in items:
+        key = (
+            _slug(item.get("controller")),
+            item.get("prev") or "",
+            item.get("curr") or "",
+        )
+        item["duplicateCount"] = duplicate_counts.get(key, 1)
+        item["duplicateFiles"] = duplicate_files.get(key, [item["file"]])
+
+    if not include_duplicates:
+        deduped = []
+        seen = set()
+        for item in items:
+            key = (
+                _slug(item.get("controller")),
+                item.get("prev") or "",
+                item.get("curr") or "",
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(item)
+        items = deduped
+
+    controllers = sorted(
+        {it["controller"] for it in items if it.get("controller")},
+        key=lambda value: value.lower(),
+    )
+    hidden_duplicates = sum(max(0, count - 1) for count in duplicate_counts.values())
+    return jsonify(
+        {
+            "domain": domain.upper(),
+            "items": items,
+            "controllers": controllers,
+            "hiddenDuplicates": 0 if include_duplicates else hidden_duplicates,
+        }
+    )
 
 
 @app.route("/api/apps", methods=["GET"])
@@ -469,20 +579,11 @@ def api_apps():
 
     # Optional explicit file selection
     file_name = request.args.get("file")
+    controller = request.args.get("controller")
+    include_status = (request.args.get("include_status") or "").lower() in ("1", "true", "yes")
 
     def _latest_file_for_domain() -> Optional[str]:
-        prefix = f"analysis_summary_{domain.lower()}_"
-        if not os.path.isdir(folder):
-            return None
-        candidates = [
-            n
-            for n in os.listdir(folder)
-            if n.startswith(prefix) and n.endswith(".json")
-        ]
-        if not candidates:
-            return None
-        # Files are timestamped; sorted() gives oldest->newest; we want newest
-        return sorted(candidates)[-1]
+        return latest_summary_file(domain, controller)
 
     if not file_name:
         file_name = _latest_file_for_domain()
@@ -499,10 +600,115 @@ def api_apps():
         with open(path, "r", encoding="utf-8") as f:
             payload = json.load(f)
         apps = payload.get("apps", {}).get("names", []) or []
+        if include_status:
+            apps_index = payload.get("appsIndex") or {}
+            enriched = []
+            for app_name in apps:
+                entry = apps_index.get(app_name) or {}
+                upgraded = 0
+                downgraded = 0
+                unchanged = 0
+                for area in entry.get("areas") or []:
+                    status = str(area.get("status") or "").lower()
+                    if status == "upgraded":
+                        upgraded += 1
+                    elif status == "downgraded":
+                        downgraded += 1
+                    else:
+                        unchanged += 1
+                enriched.append(
+                    {
+                        "name": app_name,
+                        "upgraded": upgraded,
+                        "downgraded": downgraded,
+                        "unchanged": unchanged,
+                        "changed": upgraded + downgraded,
+                        "net": upgraded - downgraded,
+                    }
+                )
+            apps = enriched
     except Exception:
         apps = []
 
     return jsonify({"apps": apps})
+
+
+@app.route("/api/portfolio", methods=["GET"])
+def api_portfolio():
+    domain = (request.args.get("domain") or "APM").upper()
+    if domain not in ("APM", "BRUM", "MRUM"):
+        return jsonify({"error": "Invalid domain."}), 400
+
+    file_name = request.args.get("file") or ""
+    controller = request.args.get("controller") or ""
+    if not file_name:
+        file_name = latest_summary_file(domain, controller or None) or ""
+
+    if not file_name:
+        return jsonify({"domain": domain, "apps": [], "meta": {}})
+
+    path = os.path.join(RESULT_FOLDER, file_name)
+    if not os.path.exists(path):
+        return jsonify({"domain": domain, "apps": [], "meta": {}})
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+    except Exception:
+        return jsonify({"domain": domain, "apps": [], "meta": {}})
+
+    apps_index = payload.get("appsIndex") or {}
+    app_names = payload.get("apps", {}).get("names", []) or sorted(apps_index.keys())
+    apps = []
+
+    for app_name in app_names:
+        entry = apps_index.get(app_name) or {}
+        upgraded = 0
+        downgraded = 0
+        unchanged = 0
+        for area in entry.get("areas") or []:
+            status = str(area.get("status") or "").lower()
+            if status == "upgraded":
+                upgraded += 1
+            elif status == "downgraded":
+                downgraded += 1
+            else:
+                unchanged += 1
+
+        if downgraded and upgraded:
+            status = "Mixed"
+            severity = 2
+        elif downgraded:
+            status = "Degraded"
+            severity = 3
+        elif upgraded:
+            status = "Improved"
+            severity = 1
+        else:
+            status = "No Change"
+            severity = 0
+
+        apps.append(
+            {
+                "name": app_name,
+                "status": status,
+                "severity": severity,
+                "upgraded": upgraded,
+                "downgraded": downgraded,
+                "unchanged": unchanged,
+                "changed": upgraded + downgraded,
+            }
+        )
+
+    apps.sort(key=lambda item: (-item["severity"], -item["changed"], item["name"].lower()))
+    return jsonify(
+        {
+            "domain": domain,
+            "file": file_name,
+            "meta": payload.get("meta", {}),
+            "apps": apps,
+        }
+    )
 
 
 @app.route("/api/insights", methods=["GET"])
@@ -510,6 +716,7 @@ def api_insights():
     domain = (request.args.get("domain") or "").upper()
     app_name = request.args.get("app") or ""
     file = request.args.get("file") or ""  # optional: specific summary filename
+    controller = request.args.get("controller") or ""
 
     if domain not in ("APM", "BRUM", "MRUM") or not app_name:
         return jsonify({"error": "Missing domain or app."}), 400
@@ -520,16 +727,8 @@ def api_insights():
     if file:
         path = os.path.join(folder, file)
     else:
-        prefix = f"analysis_summary_{domain.lower()}_"
-        try:
-            names = [
-                n for n in os.listdir(folder)
-                if n.startswith(prefix) and n.endswith(".json")
-            ]
-        except FileNotFoundError:
-            names = []
-        names.sort(reverse=True)  # newest first
-        path = os.path.join(folder, names[0]) if names else ""
+        latest_name = latest_summary_file(domain, controller or None)
+        path = os.path.join(folder, latest_name) if latest_name else ""
 
     if not path or not os.path.exists(path):
         return jsonify({"error": "Snapshot not found."}), 404
@@ -582,13 +781,12 @@ def api_trends_runs():
     # 🔹 Use the module-level RESULT_FOLDER (same as other APIs)
     folder = RESULT_FOLDER
 
-    runs = scan_runs(folder, domain=domain, controller_filter=controller, limit=limit)
+    runs = scan_runs(folder, domain=domain, controller_filter=controller, limit=1000)
 
     if baseline == "earliestprev":
-        prevs = [r["sortPrev"] for r in runs if r.get("sortPrev")]
-        if prevs:
-            earliest_prev = min(prevs)
-            runs = [r for r in runs if r.get("sortPrev") == earliest_prev]
+        runs = fixed_baseline_runs(runs)
+
+    runs = runs[:limit]
 
     series = [
         {
@@ -610,7 +808,93 @@ def api_trends_runs():
             "domain": domain.upper(),
             "controller": label,
             "count": len(series),
-            "items": series,
+        "trendMode": "fixedBaseline" if baseline == "earliestprev" else "latestRuns",
+        "baselineDate": runs[0]["previousDate"] if baseline == "earliestprev" and runs else None,
+        "items": series,
+        }
+    )
+
+
+@app.route("/api/trends/app", methods=["GET"])
+def api_trends_app():
+    domain = (request.args.get("domain") or "").lower()
+    app_name = request.args.get("app") or ""
+    controller = request.args.get("controller")
+
+    if domain not in ("apm", "brum", "mrum"):
+        return jsonify({"error": "Invalid domain."}), 400
+    if not app_name:
+        return jsonify({"error": "Missing app."}), 400
+
+    folder = RESULT_FOLDER
+    prefix = f"analysis_summary_{domain}_"
+    items = []
+
+    if not os.path.isdir(folder):
+        return jsonify({"domain": domain.upper(), "controller": controller, "app": app_name, "items": []})
+
+    app_key = app_name.strip().lower()
+
+    for name in os.listdir(folder):
+        if not (name.startswith(prefix) and name.endswith(".json")):
+            continue
+
+        path = os.path.join(folder, name)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+        except Exception:
+            continue
+
+        meta = payload.get("meta") or {}
+        if controller and _slug(meta.get("controller")) != _slug(controller):
+            continue
+
+        apps_index = payload.get("appsIndex") or {}
+        entry = apps_index.get(app_name)
+        if not entry:
+            for key, value in apps_index.items():
+                if key.strip().lower() == app_key:
+                    entry = value
+                    break
+        if not entry:
+            continue
+
+        upgraded = 0
+        downgraded = 0
+        unchanged = 0
+        for area in entry.get("areas") or []:
+            status = str(area.get("status") or "").lower()
+            if status == "upgraded":
+                upgraded += 1
+            elif status == "downgraded":
+                downgraded += 1
+            else:
+                unchanged += 1
+
+        items.append(
+            {
+                "file": name,
+                "controller": meta.get("controller"),
+                "previousDate": meta.get("previousDate") or "",
+                "currentDate": meta.get("currentDate") or "",
+                "compareDate": meta.get("compareDate") or "",
+                "upgraded": upgraded,
+                "downgraded": downgraded,
+                "unchanged": unchanged,
+            }
+        )
+
+    items = fixed_baseline_runs(items)
+    return jsonify(
+        {
+            "domain": domain.upper(),
+            "controller": controller or (items[0]["controller"] if items else None),
+            "app": app_name,
+            "trendMode": "fixedBaseline",
+            "baselineDate": items[0]["previousDate"] if items else None,
+            "count": len(items),
+            "items": items,
         }
     )
 

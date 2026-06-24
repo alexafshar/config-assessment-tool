@@ -12,7 +12,10 @@
     h1 { margin:0 0 10px 0; font-size:24px; }
     h2 { margin:0 0 6px 0; font-size:18px; }
     label { font-size:14px; color:#9fb3c8; display:block; margin:8px 0 6px; }
-    select { width:100%; padding:8px; border-radius:8px; background:#0f1620; color:#e8eef7; border:1px solid rgba(255,255,255,0.15); }
+    select, input[type="search"] { width:100%; padding:8px; border-radius:8px; background:#0f1620; color:#e8eef7; border:1px solid rgba(255,255,255,0.15); }
+    .filter-row { display:grid; grid-template-columns:1fr 150px; gap:8px; align-items:end; }
+    .checkbox-row { display:flex; align-items:center; gap:8px; margin-top:8px; color:#9fb3c8; font-size:12px; }
+    .checkbox-row input { accent-color:#00bceb; }
     table { width:100%; border-collapse:collapse; margin-top:6px; }
     th, td { border-bottom:1px solid rgba(255,255,255,0.12); padding:8px; font-size:13px; vertical-align:top; }
     th { text-align:left; color:#9fb3c8; }
@@ -27,6 +30,7 @@
     .info b { color:#ffffff; }
     .stack { display:flex; flex-direction:column; gap:12px; }
     .caption { font-size:13px; color:#9fb3c8; margin:0 0 8px 0; }
+    .print-only { display:none; }
 
     /* Metric Transitions row coloring */
     #metricsTable tbody tr.mt-improved td {
@@ -41,6 +45,8 @@
     /* Taller chart container for the Areas chart */
     .chartbox { height:500px; }
     .chartbox canvas { display:block; width:100%; height:100%; background:transparent; }
+    .chartbox-small { height:220px; position:relative; }
+    .chartbox-small canvas { display:block; width:100%; height:100%; background:transparent; }
 
     /* Context menu used to delete snapshots */
     .contextmenu {
@@ -81,14 +87,91 @@
     }
     .btn:hover { background: rgba(255,255,255,0.06); }
 
-    /* ---- Print to PDF styling (hides UI controls, prints cleanly) ---- */
     @media print {
-      body { background: #ffffff !important; color: #000000 !important; }
-      .card { background: #ffffff !important; border: 1px solid #ddd !important; }
+      @page { margin:0.35in; }
+      * { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+      body { background:#f6f8fb !important; color:#17202a !important; }
+      .wrap { max-width:none; margin:0; padding:0; }
       .no-print { display: none !important; }
+      .print-only { display:block !important; }
       a { color: #000 !important; text-decoration: none !important; }
-      th { color: #000 !important; }
+      h1 { display:none; }
+      h2 { font-size:16px; color:#101820; margin-bottom:5px; }
+      .report-header {
+        margin:0 0 12px;
+        padding:16px 18px;
+        color:#fff;
+        background:linear-gradient(135deg,#111827 0%,#12324a 55%,#0f5132 100%);
+        border:1px solid #24364a;
+        border-radius:16px;
+      }
+      .report-header h1 {
+        display:block;
+        margin:0;
+        color:#fff;
+        font-size:25px;
+      }
+      .report-header .subtitle {
+        margin:4px 0 0;
+        color:#d8e5f2;
+        font-size:12px;
+      }
+      .print-meta {
+        display:grid !important;
+        grid-template-columns:repeat(4,minmax(0,1fr));
+        gap:8px;
+        margin:0 0 12px;
+      }
+      .print-meta-item {
+        background:#fff;
+        border:1px solid #d5dde6;
+        border-radius:10px;
+        padding:9px 10px;
+      }
+      .print-meta-label {
+        color:#526173;
+        font-size:8px;
+        font-weight:800;
+        text-transform:uppercase;
+      }
+      .print-meta-value {
+        margin-top:3px;
+        color:#111827;
+        font-size:11px;
+        font-weight:700;
+        overflow-wrap:anywhere;
+      }
+      .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px !important; }
+      .card {
+        background:#fff !important;
+        border:1px solid #d5dde6 !important;
+        border-radius:14px;
+        box-shadow:none;
+        padding:13px;
+        min-width:0;
+        break-inside:avoid;
+      }
+      #controlsCard { display:none !important; }
+      #metricsCard { grid-column:1 / -1; }
+      #trendsRow, #appTimelineRow { display:block !important; }
+      .caption { color:#526173; font-size:11px; }
+      .small { color:#526173; font-size:10px; }
+      .chartbox { height:330px; }
+      .chartbox-small { height:230px; }
       canvas { max-width: 100% !important; }
+      th {
+        color:#17202a !important;
+        background:#eef3f8;
+        border-bottom:1px solid #cbd5df;
+        font-size:10px;
+        text-transform:uppercase;
+      }
+      td { font-size:10px; padding:6px 7px; border-bottom:1px solid #e3e8ef; }
+      #metricsTable tbody tr.mt-improved td { background:#f0fbf5; border-left:3px solid #35c56d; }
+      #metricsTable tbody tr.mt-declined td { background:#fff1f1; border-left:3px solid #c00000; }
+      #metricsTable { page-break-inside:auto; }
+      #metricsTable tr { break-inside:avoid; }
+      .badge { font-size:10px; padding:3px 6px; }
     }
   </style>
 </head>
@@ -96,13 +179,39 @@
   <div class="wrap">
     <div class="row" style="justify-content:space-between; align-items:center;">
       <a class="home-link no-print" href="/">← Home</a>
-      <button class="btn no-print" type="button" onclick="window.print()">Export PDF</button>
+      <div class="no-print" style="display:flex; gap:8px; align-items:center;">
+        <a id="portfolioLink" class="home-link" href="/portfolio">Portfolio View</a>
+        <button class="btn" type="button" onclick="window.print()">Export PDF</button>
+      </div>
+    </div>
+
+    <div class="report-header print-only">
+      <h1>Configuration Assessment Insights</h1>
+      <p class="subtitle">Snapshot-level movement, trend direction, and metric transition detail for the selected business application.</p>
+    </div>
+    <div class="print-meta print-only">
+      <div class="print-meta-item">
+        <div class="print-meta-label">Domain</div>
+        <div id="printDomain" class="print-meta-value">-</div>
+      </div>
+      <div class="print-meta-item">
+        <div class="print-meta-label">Controller</div>
+        <div id="printController" class="print-meta-value">-</div>
+      </div>
+      <div class="print-meta-item">
+        <div class="print-meta-label">Comparison</div>
+        <div id="printComparison" class="print-meta-value">-</div>
+      </div>
+      <div class="print-meta-item">
+        <div class="print-meta-label">Application</div>
+        <div id="printApplication" class="print-meta-value">-</div>
+      </div>
     </div>
 
     <h1>Insights</h1>
 
     <div class="row">
-      <div class="card" style="max-width:420px;">
+      <div id="controlsCard" class="card" style="max-width:420px;">
         <label for="domain">Domain</label>
         <select id="domain">
           <option value="APM">APM</option>
@@ -111,19 +220,52 @@
         </select>
 
         <label for="snapshot">Snapshot</label>
+        <div class="filter-row">
+          <div>
+            <label for="snapshotSearch">Search</label>
+            <input id="snapshotSearch" type="search" placeholder="Controller or date"/>
+          </div>
+          <div>
+            <label for="controllerFilter">Controller</label>
+            <select id="controllerFilter">
+              <option value="">All</option>
+            </select>
+          </div>
+        </div>
         <select id="snapshot">
           <option value="LATEST">Latest</option>
         </select>
-        <div class="small">Pick a specific JSON snapshot or use “Latest” for the most recent run.</div>
+        <label class="checkbox-row" for="showDuplicateSnapshots">
+          <input id="showDuplicateSnapshots" type="checkbox"/>
+          Show duplicate generated copies
+        </label>
+        <div id="snapshotPickerInfo" class="small" aria-live="polite"></div>
+        <div class="small">Use “Latest” for the newest run, or pick a specific controller/date comparison.</div>
         <div id="snapshotInfo" class="info" aria-live="polite"></div>
 
         <label for="app" style="margin-top:10px;">Application</label>
+        <div class="filter-row">
+          <div>
+            <label for="appSearch">Search</label>
+            <input id="appSearch" type="search" placeholder="Type part of an app name"/>
+          </div>
+          <div>
+            <label for="appFilter">Filter</label>
+            <select id="appFilter">
+              <option value="all">All</option>
+              <option value="changed">Changed</option>
+              <option value="downgraded">Downgraded</option>
+              <option value="upgraded">Upgraded</option>
+            </select>
+          </div>
+        </div>
         <select id="app"></select>
+        <div id="appPickerInfo" class="small" aria-live="polite"></div>
 
         <div id="areaBadges" style="margin-top:12px;"></div>
       </div>
 
-      <div class="card stack" style="flex:2;">
+      <div id="metricsCard" class="card stack" style="flex:2;">
         <h2>Improved vs Declined (Areas)</h2>
         <div id="metricsCaption" class="caption">Counts of metric improvements (green) and declines (red) per area for the selected app, comparing current snapshot to baseline.</div>
         <div class="chartbox"><canvas id="metricsChart" aria-describedby="metricsCaption"></canvas></div>
@@ -152,14 +294,18 @@
 
     <div class="row" id="trendsRow" style="margin-top:14px;">
       <div class="card">
-        <h2>Overall Application Improved & Declined Trend</h2>
-        <div id="overallLineCaption" class="caption">Number of Applications improved across recent runs for the current controller.</div>
+        <h2>Fixed Baseline Movement</h2>
+        <div id="overallLineCaption" class="caption">Improved, degraded, and net movement across recent runs for the current controller.</div>
         <canvas id="overallLine" height="140" aria-describedby="overallLineCaption"></canvas>
       </div>
+    </div>
+
+    <div class="row" id="appTimelineRow" style="margin-top:14px;">
       <div class="card">
-        <h2>Improved vs Degraded (Runs)</h2>
-        <div id="countsStackedCaption" class="caption">Per-run counts of improved (green) and degraded (red) metrics over time for the current controller.</div>
-        <canvas id="countsStacked" height="160" aria-describedby="countsStackedCaption"></canvas>
+        <h2>Selected Application Fixed Baseline Trend</h2>
+        <div id="appTimelineCaption" class="caption">Area-level upgrade and downgrade counts for the selected app across saved snapshots.</div>
+        <div class="chartbox-small"><canvas id="appTimeline" aria-describedby="appTimelineCaption"></canvas></div>
+        <div id="appTimelineNote" class="small" style="margin-top:8px;"></div>
       </div>
     </div>
 
@@ -195,9 +341,17 @@
   <script src="{{ url_for('static', filename='js/trends.js') }}"></script>
   <script>
     const domainSel   = document.getElementById('domain');
+    const portfolioLink = document.getElementById('portfolioLink');
+    const snapshotSearch = document.getElementById('snapshotSearch');
+    const controllerFilter = document.getElementById('controllerFilter');
     const snapshotSel = document.getElementById('snapshot');
     const snapshotInfo= document.getElementById('snapshotInfo');
+    const snapshotPickerInfo = document.getElementById('snapshotPickerInfo');
+    const showDuplicateSnapshots = document.getElementById('showDuplicateSnapshots');
     const appSel      = document.getElementById('app');
+    const appSearch   = document.getElementById('appSearch');
+    const appFilter   = document.getElementById('appFilter');
+    const appPickerInfo = document.getElementById('appPickerInfo');
     const areaBadges  = document.getElementById('areaBadges');
     const trendsRow   = document.getElementById('trendsRow');
     const fallbackRow = document.getElementById('fallbackRow');
@@ -208,15 +362,76 @@
     const attentionCaptionEl      = document.getElementById('attentionCaption');
     const improvementCaptionEl    = document.getElementById('improvementCaption');
     const overallLineCaptionEl    = document.getElementById('overallLineCaption');
-    const countsStackedCaptionEl  = document.getElementById('countsStackedCaption');
+    const appTimelineCaptionEl    = document.getElementById('appTimelineCaption');
+    const appTimelineNote         = document.getElementById('appTimelineNote');
     const fallbackCaptionEl       = document.getElementById('fallbackCaption');
     const metricTransitionsCaptionEl = document.getElementById('metricTransitionsCaption');
+    const printDomainEl = document.getElementById('printDomain');
+    const printControllerEl = document.getElementById('printController');
+    const printComparisonEl = document.getElementById('printComparison');
+    const printApplicationEl = document.getElementById('printApplication');
 
-    let metricsChart, overallGaugeChart, countsBarChart;
+    let metricsChart, overallGaugeChart, countsBarChart, appTimelineChart;
     let insightsReqSeq = 0;
 
     let historyIndex = {};
     let historyItems = [];
+    let historyHiddenDuplicates = 0;
+    let allAppItems = [];
+
+    function appItemName(item) {
+      return typeof item === 'string' ? item : item.name;
+    }
+
+    function appOptionLabel(item) {
+      if (typeof item === 'string') return item;
+      const parts = [];
+      if (item.downgraded) parts.push(`${item.downgraded} down`);
+      if (item.upgraded) parts.push(`${item.upgraded} up`);
+      return parts.length ? `${item.name} (${parts.join(', ')})` : item.name;
+    }
+
+    function filteredAppItems() {
+      const q = (appSearch.value || '').trim().toLowerCase();
+      const filter = appFilter.value || 'all';
+      return allAppItems
+        .filter(item => {
+          const name = appItemName(item) || '';
+          if (q && !name.toLowerCase().includes(q)) return false;
+          if (filter === 'changed') return Number(item.changed || 0) > 0;
+          if (filter === 'downgraded') return Number(item.downgraded || 0) > 0;
+          if (filter === 'upgraded') return Number(item.upgraded || 0) > 0;
+          return true;
+        })
+        .sort((a, b) => {
+          const changedDelta = Number(b.changed || 0) - Number(a.changed || 0);
+          if (changedDelta) return changedDelta;
+          return appItemName(a).localeCompare(appItemName(b));
+        });
+    }
+
+    function renderAppOptions(preferredValue = '') {
+      const items = filteredAppItems();
+      appSel.innerHTML = '';
+
+      items.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = appItemName(item);
+        opt.textContent = appOptionLabel(item);
+        appSel.appendChild(opt);
+      });
+
+      appPickerInfo.textContent = `${items.length} of ${allAppItems.length} applications shown.`;
+
+      if (!items.length) {
+        appPickerInfo.textContent = `No applications match the current search/filter.`;
+        return false;
+      }
+
+      const values = items.map(appItemName);
+      appSel.value = values.includes(preferredValue) ? preferredValue : values[0];
+      return true;
+    }
 
     function changeType(text) {
       const t = (text || '').toLowerCase();
@@ -237,11 +452,74 @@
       const prev = item.prev || item.previous || 'Prev';
       const curr = item.curr || item.current || 'Curr';
       const ts   = humanTs(item.timestamp);
-      return `${ctrl} — ${prev} vs ${curr} — ${ts}`;
+      const duplicateSuffix = Number(item.duplicateCount || 0) > 1 ? ` (${item.duplicateCount} copies)` : '';
+      return `${ctrl} — ${prev} vs ${curr} — generated ${ts}${duplicateSuffix}`;
+    }
+    function snapshotSearchText(item) {
+      return [
+        item.controller,
+        item.prev,
+        item.curr,
+        item.previous,
+        item.current,
+        humanTs(item.timestamp),
+        item.file,
+      ].filter(Boolean).join(' ').toLowerCase();
+    }
+    function filteredHistoryItems() {
+      const q = (snapshotSearch.value || '').trim().toLowerCase();
+      const controller = controllerFilter.value || '';
+      return historyItems.filter(item => {
+        if (controller && item.controller !== controller) return false;
+        if (q && !snapshotSearchText(item).includes(q)) return false;
+        return true;
+      });
+    }
+    function renderControllerFilter(controllers, preferredValue = '') {
+      controllerFilter.innerHTML = '';
+      const allOpt = document.createElement('option');
+      allOpt.value = '';
+      allOpt.textContent = 'All';
+      controllerFilter.appendChild(allOpt);
+      controllers.forEach(controller => {
+        const opt = document.createElement('option');
+        opt.value = controller;
+        opt.textContent = controller;
+        controllerFilter.appendChild(opt);
+      });
+      controllerFilter.value = controllers.includes(preferredValue) ? preferredValue : '';
+    }
+    function renderSnapshotOptions(preferredValue = '') {
+      const items = filteredHistoryItems();
+      snapshotSel.innerHTML = '';
+      historyIndex = {};
+
+      const latestOpt = document.createElement('option');
+      latestOpt.value = 'LATEST';
+      latestOpt.textContent = 'Latest';
+      snapshotSel.appendChild(latestOpt);
+
+      items.forEach(item => {
+        historyIndex[item.file] = item;
+        const opt = document.createElement('option');
+        opt.value = item.file;
+        opt.textContent = buildSnapshotLabel(item);
+        snapshotSel.appendChild(opt);
+      });
+
+      const duplicateText = historyHiddenDuplicates
+        ? ` ${historyHiddenDuplicates} duplicate generated ${historyHiddenDuplicates === 1 ? 'copy is' : 'copies are'} hidden.`
+        : '';
+      snapshotPickerInfo.textContent = `${items.length} of ${historyItems.length} snapshots shown.${duplicateText}`;
+      const validValues = ['LATEST'].concat(items.map(item => item.file));
+      snapshotSel.value = validValues.includes(preferredValue) ? preferredValue : 'LATEST';
+      updateSnapshotInfo();
+      return items.length > 0 || snapshotSel.value === 'LATEST';
     }
     function updateSnapshotInfo() {
       if (snapshotSel.value === 'LATEST') {
-        snapshotInfo.textContent = 'Using the most recent JSON output for this domain.';
+        const controller = controllerFilter.value ? ` for ${controllerFilter.value}` : '';
+        snapshotInfo.textContent = `Using the most recent JSON output${controller}.`;
         return;
       }
       const item = historyIndex[snapshotSel.value];
@@ -253,36 +531,31 @@
       const prev = item.prev || item.previous || 'Unknown';
       const curr = item.curr || item.current || 'Unknown';
       const ts   = humanTs(item.timestamp);
-      snapshotInfo.innerHTML = `<b>Controller:</b> ${ctrl} &nbsp;|&nbsp; <b>Compared:</b> ${prev} vs ${curr} &nbsp;|&nbsp; <b>Generated:</b> ${ts}`;
+      const copies = Number(item.duplicateCount || 0) > 1 ? ` &nbsp;|&nbsp; <b>Copies:</b> ${item.duplicateCount}` : '';
+      snapshotInfo.innerHTML = `<b>Controller:</b> ${ctrl} &nbsp;|&nbsp; <b>Compared:</b> ${prev} vs ${curr} &nbsp;|&nbsp; <b>Generated:</b> ${ts}${copies}`;
     }
 
     async function loadHistory() {
       const domain = domainSel.value.toLowerCase();
-      snapshotSel.innerHTML = '';
-      historyIndex = {};
+      const previousController = controllerFilter.value;
+      const previousSnapshot = snapshotSel.value;
       historyItems = [];
-
-      const latestOpt = document.createElement('option');
-      latestOpt.value = 'LATEST';
-      latestOpt.textContent = 'Latest';
-      snapshotSel.appendChild(latestOpt);
+      historyHiddenDuplicates = 0;
 
       try {
-        const resp = await fetch(`/api/history?domain=${encodeURIComponent(domain)}`);
+        const params = new URLSearchParams({ domain });
+        if (showDuplicateSnapshots.checked) params.append('include_duplicates', '1');
+        const resp = await fetch(`/api/history?${params.toString()}`);
         const data = await resp.json();
         historyItems = (data.items || []);
-        historyItems.forEach(item => {
-          historyIndex[item.file] = item;
-          const opt = document.createElement('option');
-          opt.value = item.file;
-          opt.textContent = buildSnapshotLabel(item);
-          snapshotSel.appendChild(opt);
-        });
+        historyHiddenDuplicates = Number(data.hiddenDuplicates || 0);
+        renderControllerFilter(data.controllers || [], previousController);
       } catch (e) {
         console.warn('Failed to load history:', e);
+        renderControllerFilter([], '');
       }
 
-      snapshotSel.value = 'LATEST';
+      renderSnapshotOptions(previousSnapshot || 'LATEST');
       updateSnapshotInfo();
       refreshTrendsDynamic();
       updateCaptions(); // initial captions
@@ -291,22 +564,19 @@
     async function loadApps() {
       const domain = domainSel.value.toLowerCase();  
       const file = snapshotSel.value !== 'LATEST' ? snapshotSel.value : '';
-      appSel.innerHTML = '';
 
       const params = new URLSearchParams({ domain });
       if (file) params.append('file', file);
+      if (!file && controllerFilter.value) params.append('controller', controllerFilter.value);
+      params.append('include_status', '1');
 
       const resp = await fetch(`/api/apps?${params.toString()}`);
       const data = await resp.json();
 
-      (data.apps || []).forEach(a => {
-        const opt = document.createElement('option');
-        opt.value = a; opt.textContent = a;
-        appSel.appendChild(opt);
-      });
+      allAppItems = data.apps || [];
+      const hasOptions = renderAppOptions(appSel.value);
 
-      if (data.apps && data.apps.length) {
-        appSel.value = data.apps[0];
+      if (hasOptions) {
         loadInsights();
       }
     }
@@ -367,26 +637,46 @@
       }
     }
 
-    function currentControllerForTrends() {
-      if (snapshotSel.value === 'LATEST') {
-        return historyItems.length ? (historyItems[0].controller || '') : '';
-      }
-      const item = historyIndex[snapshotSel.value];
-      return (item && item.controller) ? item.controller : '';
+    function currentSnapshotItem() {
+      if (snapshotSel.value !== 'LATEST') return historyIndex[snapshotSel.value] || null;
+      const items = filteredHistoryItems();
+      return items.length ? items[0] : null;
     }
 
-    function currentCompareLabel() {
-      if (snapshotSel.value === 'LATEST') return 'current vs baseline';
-      const item = historyIndex[snapshotSel.value];
-      const prev = item?.prev || item?.previous || 'baseline';
-      const curr = item?.curr || item?.current || 'current';
+    function currentCompareLabel(includePrefix = false) {
+      const item = currentSnapshotItem();
+      if (!item) return includePrefix ? 'Previous workbook: baseline | Current workbook: current' : 'current vs baseline';
+      const prev = item.prev || item.previous || 'baseline';
+      const curr = item.curr || item.current || 'current';
+      if (includePrefix) return `Previous workbook: ${prev} | Current workbook: ${curr}`;
       return `${prev} vs ${curr}`;
+    }
+
+    function currentGeneratedLabel() {
+      const item = currentSnapshotItem();
+      return item ? humanTs(item.timestamp) : '';
+    }
+
+    function currentControllerForTrends() {
+      const item = historyIndex[snapshotSel.value];
+      if (item && item.controller) return item.controller;
+      const latest = currentSnapshotItem();
+      return latest?.controller || '';
     }
 
     function updateCaptions() {
       const app = appSel.value || 'selected app';
       const controller = currentControllerForTrends() || 'controller';
       const cmp = currentCompareLabel();
+      const printCmp = currentCompareLabel(true);
+      const generated = currentGeneratedLabel();
+      if (portfolioLink) {
+        portfolioLink.href = `/portfolio?domain=${encodeURIComponent(domainSel.value)}`;
+      }
+      if (printDomainEl) printDomainEl.textContent = domainSel.value || '-';
+      if (printControllerEl) printControllerEl.textContent = controller || '-';
+      if (printComparisonEl) printComparisonEl.textContent = generated ? `${printCmp} | Generated: ${generated}` : printCmp;
+      if (printApplicationEl) printApplicationEl.textContent = app || '-';
 
       // Areas chart
       metricsCaptionEl.textContent = `Counts of metric improvements (green) and declines (red) per area for ${app}, comparing ${cmp}.`;
@@ -396,8 +686,8 @@
       improvementCaptionEl.textContent = `Areas with the highest number of improved metrics for ${app} — ${cmp}.`;
 
       // Trends
-      overallLineCaptionEl.textContent   = `Number of improved (green) and degraded (red) applications for controller ${controller}.`;
-      countsStackedCaptionEl.textContent = `Number of improved (green) and degraded (red) applications for controller ${controller}.`;
+      overallLineCaptionEl.textContent   = `Improved and degraded application counts plus net movement using the earliest previous workbook as the fixed baseline for controller ${controller}.`;
+      appTimelineCaptionEl.textContent    = `Area-level upgrade and downgrade counts for ${app}, using the earliest previous workbook as the fixed baseline for controller ${controller}.`;
 
       // Fallback KPIs
       fallbackCaptionEl.textContent = `Latest run summary for controller ${controller}: overall improvement percentage and improved vs degraded counts.`;
@@ -414,6 +704,7 @@
       const file = snapshotSel.value !== 'LATEST' ? snapshotSel.value : '';
       const q = new URLSearchParams({ domain, app });
       if (file) q.append('file', file);
+      if (!file && controllerFilter.value) q.append('controller', controllerFilter.value);
 
       const resp = await fetch(`/api/insights?${q.toString()}`);
       const data = await resp.json();
@@ -592,7 +883,120 @@
       updateCaptions();
     }
 
-    function triggerTrendsRefresh() { refreshTrendsDynamic(); }
+    async function refreshAppTimeline() {
+      const domain = domainSel.value.toLowerCase();
+      const controller = currentControllerForTrends();
+      const app = appSel.value || '';
+      const row = document.getElementById('appTimelineRow');
+      const canvas = document.getElementById('appTimeline');
+
+      if (!controller || !app || !canvas) {
+        row.style.display = 'none';
+        appTimelineChart?.destroy();
+        appTimelineChart = null;
+        return;
+      }
+
+      const q = new URLSearchParams({ domain, controller, app });
+      try {
+        const resp = await fetch(`/api/trends/app?${q.toString()}`);
+        const data = await resp.json();
+        const items = Array.isArray(data.items) ? data.items : [];
+
+        if (!items.length) {
+          row.style.display = 'none';
+          appTimelineChart?.destroy();
+          appTimelineChart = null;
+          return;
+        }
+
+        row.style.display = 'flex';
+        const labels = items.map(i => i.currentDate || i.compareDate || 'Run');
+        const fullLabels = items.map(i => `${i.previousDate || 'Baseline'} → ${i.currentDate || 'Current'}`);
+        const upgraded = items.map(i => Number(i.upgraded || 0));
+        const downgraded = items.map(i => Number(i.downgraded || 0));
+        const unchanged = items.map(i => Number(i.unchanged || 0));
+
+        appTimelineNote.textContent = items.length < 2
+          ? 'Only one fixed-baseline trend point contains this app; add more baseline-to-current snapshots to show movement over time.'
+          : `${items.length} fixed-baseline trend points found for this app.`;
+
+        const existing = Chart.getChart(canvas);
+        if (existing && existing.config?.type === 'line') {
+          existing.data.labels = labels;
+          existing.data.datasets[0].data = upgraded;
+          existing.data.datasets[1].data = downgraded;
+          existing.data.datasets[2].data = unchanged;
+          existing.update();
+          appTimelineChart = existing;
+        } else {
+          try { existing?.destroy(); } catch {}
+          appTimelineChart = new Chart(canvas, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Upgraded Areas',
+                  data: upgraded,
+                  borderColor: '#35c56d',
+                  backgroundColor: 'rgba(53,197,109,0.15)',
+                  pointBackgroundColor: '#35c56d',
+                  pointRadius: 3,
+                  tension: 0.25,
+                  fill: false
+                },
+                {
+                  label: 'Downgraded Areas',
+                  data: downgraded,
+                  borderColor: '#c00000',
+                  backgroundColor: 'rgba(192,0,0,0.15)',
+                  pointBackgroundColor: '#c00000',
+                  pointRadius: 3,
+                  tension: 0.25,
+                  fill: false
+                },
+                {
+                  label: 'No Change Areas',
+                  data: unchanged,
+                  borderColor: '#54677a',
+                  backgroundColor: 'rgba(84,103,122,0.15)',
+                  pointBackgroundColor: '#54677a',
+                  pointRadius: 3,
+                  tension: 0.25,
+                  fill: false
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: 'index', intersect: false },
+              scales: {
+                x: { ticks: { maxRotation: 20 }, title: { display: true, text: 'Current assessment date' } },
+                y: { beginAtZero: true, title: { display: true, text: 'Area count' } }
+              },
+              plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                  callbacks: {
+                    title: (points) => fullLabels[points[0]?.dataIndex] || ''
+                  }
+                }
+              }
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to refresh app timeline:', e);
+        row.style.display = 'none';
+      }
+    }
+
+    function triggerTrendsRefresh() {
+      refreshTrendsDynamic();
+      refreshAppTimeline();
+    }
 
     domainSel.addEventListener('change', async () => {
       await loadHistory();
@@ -607,7 +1011,41 @@
       triggerTrendsRefresh();
       updateCaptions();
     });
-    appSel.addEventListener('change', () => { loadInsights(); updateCaptions(); });
+    snapshotSearch.addEventListener('input', async () => {
+      renderSnapshotOptions(snapshotSel.value);
+      await loadApps();
+      triggerTrendsRefresh();
+      updateCaptions();
+    });
+    controllerFilter.addEventListener('change', async () => {
+      renderSnapshotOptions(snapshotSel.value);
+      await loadApps();
+      triggerTrendsRefresh();
+      updateCaptions();
+    });
+    showDuplicateSnapshots.addEventListener('change', async () => {
+      await loadHistory();
+      await loadApps();
+      triggerTrendsRefresh();
+      updateCaptions();
+    });
+    appSel.addEventListener('change', () => { loadInsights(); refreshAppTimeline(); updateCaptions(); });
+    appSearch.addEventListener('input', () => {
+      const previous = appSel.value;
+      if (renderAppOptions(previous)) {
+        loadInsights();
+        refreshAppTimeline();
+        updateCaptions();
+      }
+    });
+    appFilter.addEventListener('change', () => {
+      const previous = appSel.value;
+      if (renderAppOptions(previous)) {
+        loadInsights();
+        refreshAppTimeline();
+        updateCaptions();
+      }
+    });
 
     (async function init() {
       const params = new URLSearchParams(window.location.search);

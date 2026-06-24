@@ -387,6 +387,8 @@
         <div>
           <p style="text-align:center;margin-top:12px;">
             <a id="openInsightsLink" href="/insights" style="color:#00bceb;">Open Insights</a>
+            <span style="color:#9fb3c8;margin:0 8px;">|</span>
+            <a id="openPortfolioLink" href="/portfolio" style="color:#00bceb;">Portfolio View</a>
           </p>
         </div>
     </div>
@@ -397,11 +399,13 @@
     const tabs = document.querySelectorAll('.tab');
     const panels = document.querySelectorAll('.panel');
     const insightsLink = document.getElementById('openInsightsLink');
+    const portfolioLink = document.getElementById('openPortfolioLink');
 
     function updateInsightsHref() {
         const active = document.querySelector('.tab.active');
         const domain = active && active.dataset.target !== 'folders' ? active.dataset.target.toUpperCase() : 'APM';
         insightsLink.href = `/insights?domain=${encodeURIComponent(domain)}`;
+        portfolioLink.href = `/portfolio?domain=${encodeURIComponent(domain)}`;
     }
 
     tabs.forEach(t => {
