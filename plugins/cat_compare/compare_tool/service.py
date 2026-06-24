@@ -434,6 +434,10 @@ def _norm_name(name: str) -> str:
     return "".join(ch.lower() for ch in (name or "") if ch.isalnum())
 
 
+def _is_raw_candidate(filename: str) -> bool:
+    return "raw" in _norm_name(filename)
+
+
 def _domain_score(filename: str, domain: str) -> int:
     """
     Score how likely `filename` belongs to `domain` (apm/brum/mrum).
@@ -442,11 +446,20 @@ def _domain_score(filename: str, domain: str) -> int:
     n = _norm_name(filename)
     d = _norm_name(domain)
 
+    if _is_raw_candidate(filename):
+        return -1
+
     score = 0
 
     # strong signal
     if d in n:
         score += 100
+    else:
+        return -1
+
+    # CAT comparison-ready exports should include MaturityAssessment.
+    if "maturityassessment" in n:
+        score += 150
 
     # helpful keywords (tweak if your exports use different naming)
     if domain == "apm":
@@ -470,7 +483,11 @@ def _domain_score(filename: str, domain: str) -> int:
 
 
 def _best_candidate(files: List[Any], domain: str) -> Optional[Any]:
-    candidates = [f for f in files if getattr(f, "filename", None)]
+    candidates = [
+        f
+        for f in files
+        if getattr(f, "filename", None) and _domain_score(f.filename, domain) >= 0
+    ]
     if not candidates:
         return None
 
@@ -508,6 +525,8 @@ def find_best_matching_files(
 
             for cf in current_files:
                 if not getattr(cf, "filename", None):
+                    continue
+                if _domain_score(cf.filename, domain) < 0:
                     continue
                 sim = SequenceMatcher(None, prev_key, _norm_name(cf.filename)).ratio()
                 if sim > best_sim:

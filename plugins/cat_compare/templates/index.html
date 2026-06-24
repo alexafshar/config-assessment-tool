@@ -87,6 +87,20 @@
 
         .panel { display: none; padding-top: 18px; }
         .panel.active { display: block; }
+        .guidance {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            padding: 14px 0 0;
+        }
+        .guidance-item {
+            border: 1px solid var(--border);
+            background: #0b1120;
+            border-radius: var(--radius-sm);
+            padding: 12px;
+        }
+        .guidance-title { margin: 0 0 4px; font-size: 14px; font-weight: 700; }
+        .guidance-text { margin: 0; font-size: 13px; color: var(--muted); }
 
         .section {
             background: #0c1320;
@@ -99,6 +113,21 @@
 
         .field { margin: 12px 0 14px; }
         .label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+        .checks { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+        .check {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--border);
+            background: #0b1120;
+            border-radius: 10px;
+            padding: 8px 10px;
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .check input { accent-color: var(--accent); }
 
         .drop {
             position: relative;
@@ -156,6 +185,10 @@
         .footer { text-align: center; margin-top: 22px; color: var(--muted); font-size: 12px; }
         .footer a { color: var(--accent); text-decoration: none; }
         .footer a:hover { text-decoration: underline; }
+        @media (max-width: 760px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .guidance { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -171,13 +204,26 @@
         {% endif %}
 
         <div class="tabs" role="tablist" aria-label="Data domains">
-            <button class="tab active" role="tab" aria-selected="true" data-target="apm">APM</button>
-            <button class="tab" role="tab" aria-selected="false" data-target="brum">BRUM</button>
-            <button class="tab" role="tab" aria-selected="false" data-target="mrum">MRUM</button>
+            {% set active = active_tab | default('apm') %}
+            <button class="tab {% if active == 'apm' %}active{% endif %}" role="tab" aria-selected="{{ 'true' if active == 'apm' else 'false' }}" data-target="apm">APM</button>
+            <button class="tab {% if active == 'brum' %}active{% endif %}" role="tab" aria-selected="{{ 'true' if active == 'brum' else 'false' }}" data-target="brum">BRUM</button>
+            <button class="tab {% if active == 'mrum' %}active{% endif %}" role="tab" aria-selected="{{ 'true' if active == 'mrum' else 'false' }}" data-target="mrum">MRUM</button>
+            <button class="tab {% if active == 'folders' %}active{% endif %}" role="tab" aria-selected="{{ 'true' if active == 'folders' else 'false' }}" data-target="folders">Folder Compare</button>
+        </div>
+
+        <div class="guidance" aria-label="Compare mode guidance">
+            <div class="guidance-item">
+                <p class="guidance-title">Use APM, BRUM, or MRUM</p>
+                <p class="guidance-text">Best when you already know the exact previous and current workbook for one domain.</p>
+            </div>
+            <div class="guidance-item">
+                <p class="guidance-title">Use Folder Compare</p>
+                <p class="guidance-text">Best when each assessment folder contains APM, BRUM, and MRUM exports. The tool selects MaturityAssessment files and skips raw files.</p>
+            </div>
         </div>
 
         <!-- APM -->
-        <section id="apm" class="panel active" role="tabpanel" aria-labelledby="tab-apm">
+        <section id="apm" class="panel {% if active == 'apm' %}active{% endif %}" role="tabpanel" aria-labelledby="tab-apm" {% if active != 'apm' %}hidden{% endif %}>
             <div class="section">
                 <h2>APM (Application Performance Monitoring)</h2>
                 <form action="/upload" method="post" enctype="multipart/form-data">
@@ -214,7 +260,7 @@
         </section>
 
         <!-- BRUM -->
-        <section id="brum" class="panel" role="tabpanel" aria-labelledby="tab-brum" hidden>
+        <section id="brum" class="panel {% if active == 'brum' %}active{% endif %}" role="tabpanel" aria-labelledby="tab-brum" {% if active != 'brum' %}hidden{% endif %}>
             <div class="section">
                 <h2>BRUM (Browser Real User Monitoring)</h2>
                 <form action="/upload_brum" method="post" enctype="multipart/form-data">
@@ -251,7 +297,7 @@
         </section>
 
         <!-- MRUM -->
-        <section id="mrum" class="panel" role="tabpanel" aria-labelledby="tab-mrum" hidden>
+        <section id="mrum" class="panel {% if active == 'mrum' %}active{% endif %}" role="tabpanel" aria-labelledby="tab-mrum" {% if active != 'mrum' %}hidden{% endif %}>
             <div class="section">
                 <h2>MRUM (Mobile Real User Monitoring)</h2>
                 <form action="/upload_mrum" method="post" enctype="multipart/form-data">
@@ -287,6 +333,54 @@
             </div>
         </section>
 
+        <!-- Folder Compare -->
+        <section id="folders" class="panel {% if active == 'folders' %}active{% endif %}" role="tabpanel" aria-labelledby="tab-folders" {% if active != 'folders' %}hidden{% endif %}>
+            <div class="section">
+                <h2>Folder Compare (Previous vs Current)</h2>
+                <form action="/upload_folders" method="post" enctype="multipart/form-data">
+                    <div class="grid-2">
+                        <div class="field">
+                            <label class="label" for="previous_folder">Previous Assessment Folder</label>
+                            <div class="drop" data-drop="previous_folder">
+                                <div>
+                                    <div class="file-label">Browse to select the previous folder.</div>
+                                    <div class="file-name" id="previous_folder_name">No folder selected.</div>
+                                </div>
+                                <button class="browse-btn" type="button" data-browse="previous_folder">Browse</button>
+                                <input type="file" id="previous_folder" name="previous_folder" webkitdirectory directory multiple required />
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="label" for="current_folder">Current Assessment Folder</label>
+                            <div class="drop" data-drop="current_folder">
+                                <div>
+                                    <div class="file-label">Browse to select the current folder.</div>
+                                    <div class="file-name" id="current_folder_name">No folder selected.</div>
+                                </div>
+                                <button class="browse-btn" type="button" data-browse="current_folder">Browse</button>
+                                <input type="file" id="current_folder" name="current_folder" webkitdirectory directory multiple required />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <span class="label">Domains to compare</span>
+                        <div class="checks">
+                            <label class="check"><input type="checkbox" name="data_types" value="apm" checked /> APM</label>
+                            <label class="check"><input type="checkbox" name="data_types" value="brum" checked /> BRUM</label>
+                            <label class="check"><input type="checkbox" name="data_types" value="mrum" checked /> MRUM</label>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn" type="submit">Compare Selected Folders</button>
+                    </div>
+                    <div class="note">The matcher picks APM, BRUM, and MRUM MaturityAssessment workbooks and ignores files with raw in the filename. Timeline uploads for 3+ assessment folders are planned next.</div>
+                </form>
+            </div>
+        </section>
+
         <div class="footer">
             Need help? Open an issue or contact your administrator. Built for local use; no files leave your machine.
         </div>
@@ -306,7 +400,7 @@
 
     function updateInsightsHref() {
         const active = document.querySelector('.tab.active');
-        const domain = active ? active.dataset.target.toUpperCase() : 'APM';
+        const domain = active && active.dataset.target !== 'folders' ? active.dataset.target.toUpperCase() : 'APM';
         insightsLink.href = `/insights?domain=${encodeURIComponent(domain)}`;
     }
 
@@ -332,6 +426,10 @@
         function showName() {
             if (!input.files || input.files.length === 0) {
                 nameEl.textContent = "No file selected.";
+            } else if (input.hasAttribute("webkitdirectory")) {
+                const first = input.files[0];
+                const folder = (first.webkitRelativePath || first.name).split("/")[0];
+                nameEl.textContent = `${folder} (${input.files.length} files)`;
             } else {
                 nameEl.textContent = Array.from(input.files).map(f => f.name).join(", ");
             }
@@ -354,7 +452,7 @@
         });
     }
 
-    ["previous_file","current_file","previous_brum","current_brum","previous_mrum","current_mrum"].forEach(wireFile);
+    ["previous_file","current_file","previous_brum","current_brum","previous_mrum","current_mrum","previous_folder","current_folder"].forEach(wireFile);
 
     // Initial set of the Insights link
     updateInsightsHref();

@@ -71,7 +71,7 @@ def excel_status_note(domain: str) -> str:
 
 @app.route("/", methods=["GET"])
 def index():
-    return render_template("index.html")
+    return render_template("index.html", active_tab="apm")
 
 
 @app.route("/insights", methods=["GET"])
@@ -83,13 +83,13 @@ def insights():
 @app.route("/upload", methods=["POST"])
 def upload_apm():
     if "previous_file" not in request.files or "current_file" not in request.files:
-        return render_template("index.html", message="Missing files."), 400
+        return render_template("index.html", message="Missing files.", active_tab="apm"), 400
 
     prev = request.files["previous_file"]
     curr = request.files["current_file"]
 
     if not prev.filename or not curr.filename:
-        return render_template("index.html", message="Please select both files."), 400
+        return render_template("index.html", message="Please select both files.", active_tab="apm"), 400
 
     prev_path = os.path.join(UPLOAD_FOLDER, "previous_apm.xlsx")
     curr_path = os.path.join(UPLOAD_FOLDER, "current_apm.xlsx")
@@ -124,7 +124,7 @@ def upload_apm():
         "Insights snapshot has been generated and will be available on the Insights page."
         f"{excel_status_note('APM')}"
     )
-    return render_template("index.html", message=msg)
+    return render_template("index.html", message=msg, active_tab="apm")
 
 
 
@@ -138,13 +138,13 @@ def download(filename):
 @app.route("/upload_brum", methods=["POST"])
 def upload_brum():
     if "previous_brum" not in request.files or "current_brum" not in request.files:
-        return render_template("index.html", message="Missing BRUM files."), 400
+        return render_template("index.html", message="Missing BRUM files.", active_tab="brum"), 400
 
     prev = request.files["previous_brum"]
     curr = request.files["current_brum"]
 
     if not prev.filename or not curr.filename:
-        return render_template("index.html", message="Please select both BRUM files."), 400
+        return render_template("index.html", message="Please select both BRUM files.", active_tab="brum"), 400
 
     prev_path = os.path.join(UPLOAD_FOLDER, "previous_brum.xlsx")
     curr_path = os.path.join(UPLOAD_FOLDER, "current_brum.xlsx")
@@ -173,19 +173,19 @@ def upload_brum():
         "BRUM Insights snapshot has been generated and will be available on the Insights page."
         f"{excel_status_note('BRUM')}"
     )
-    return render_template("index.html", message=msg)
+    return render_template("index.html", message=msg, active_tab="brum")
 
 
 @app.route("/upload_mrum", methods=["POST"])
 def upload_mrum():
     if "previous_mrum" not in request.files or "current_mrum" not in request.files:
-        return render_template("index.html", message="Missing MRUM files."), 400
+        return render_template("index.html", message="Missing MRUM files.", active_tab="mrum"), 400
 
     prev = request.files["previous_mrum"]
     curr = request.files["current_mrum"]
 
     if not prev.filename or not curr.filename:
-        return render_template("index.html", message="Please select both MRUM files."), 400
+        return render_template("index.html", message="Please select both MRUM files.", active_tab="mrum"), 400
 
     prev_path = os.path.join(UPLOAD_FOLDER, "previous_mrum.xlsx")
     curr_path = os.path.join(UPLOAD_FOLDER, "current_mrum.xlsx")
@@ -214,7 +214,7 @@ def upload_mrum():
         "MRUM Insights snapshot has been generated and will be available on the Insights page."
         f"{excel_status_note('MRUM')}"
     )
-    return render_template("index.html", message=msg)
+    return render_template("index.html", message=msg, active_tab="mrum")
 
 
 # ---------- Folder upload (processes multiple data types) --------------------
@@ -225,12 +225,12 @@ def upload_folders():
     # Check if folders were uploaded
     if 'previous_folder' not in request.files or 'current_folder' not in request.files:
         logging.error("[FOLDERS] No folder part")
-        return render_template('index.html', message="Error: Please select both previous and current folders."), 400
+        return render_template('index.html', message="Error: Please select both previous and current folders.", active_tab="folders"), 400
     
     # Get the selected data types from checkboxes
     selected_types = request.form.getlist('data_types')
     if not selected_types:
-        return render_template('index.html', message="Error: Please select at least one data type (APM, BRUM, or MRUM)."), 400
+        return render_template('index.html', message="Error: Please select at least one data type (APM, BRUM, or MRUM).", active_tab="folders"), 400
     
     logging.info(f"[FOLDERS] Selected data types: {selected_types}")
     
@@ -323,9 +323,9 @@ def upload_folders():
         message = "".join(message_parts)
     else:
         message = f"Error: No files could be processed. Issues encountered:<br>{'<br>'.join(errors)}"
-        return render_template('index.html', message=message), 400
+        return render_template('index.html', message=message, active_tab="folders"), 400
     
-    return render_template('index.html', message=message)
+    return render_template('index.html', message=message, active_tab="folders")
 
 
 #####################################################################################
@@ -621,4 +621,3 @@ if __name__ == "__main__":
     # Give Flask a moment to start, then open the browser
     threading.Timer(1.0, open_browser).start()
     app.run(host="127.0.0.1", port=5000, debug=False)
-
