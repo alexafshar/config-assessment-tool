@@ -18,7 +18,12 @@ import logging
 from typing import Dict, Tuple, Optional, Any, List
 from pathlib import Path
 
-from .excel_io import save_workbook, check_controllers_match
+from .excel_io import (
+    inspect_summary_formula_cache,
+    summary_missing_cache_is_supported,
+    save_workbook,
+    check_controllers_match,
+)
 from .summary import (
     create_summary_workbooks,
     compare_files_summary,
@@ -37,6 +42,11 @@ logger = logging.getLogger(__name__)
 
 # Base directory of the project (points at compare-plugin root)
 BASE_DIR = Path(__file__).resolve().parent.parent
+LAST_EXCEL_RECALCULATION_STATUS: Dict[str, str] = {}
+
+
+def get_excel_recalculation_status(domain: str) -> str:
+    return LAST_EXCEL_RECALCULATION_STATUS.get((domain or "").upper(), "")
 
 
 def _resolve_template_path(config: Dict, domain_key: str, default_name: str) -> Optional[str]:
@@ -66,6 +76,94 @@ def _resolve_template_path(config: Dict, domain_key: str, default_name: str) -> 
 
     logger.warning("Template not found at %s", template_path)
     return None
+
+
+def _prepare_summary_formula_values(
+    previous_file_path: str,
+    current_file_path: str,
+    config: Dict,
+    domain: str,
+) -> None:
+    """
+    Ensure Summary formulas can be read as values.
+
+    Modes:
+      - always: current behavior; open and save both workbooks with Excel.
+      - auto: skip Excel when Summary formula cached values already exist.
+      - never: never use Excel; useful for proving no-Excel behavior.
+    """
+    mode = str(config.get("excel_recalculation_mode", "always")).strip().lower()
+    status = ""
+    if mode not in {"always", "auto", "never"}:
+        logger.warning(
+            "[%s] Unknown excel_recalculation_mode=%r; using 'always'.",
+            domain,
+            mode,
+        )
+        mode = "always"
+
+    if mode == "always":
+        logger.info("[%s] Recalculating workbooks with Excel (mode=always).", domain)
+        save_workbook(previous_file_path)
+        save_workbook(current_file_path)
+        status = "Excel recalculation used before comparison."
+        LAST_EXCEL_RECALCULATION_STATUS[domain.upper()] = status
+        return
+
+    diagnostics = [
+        inspect_summary_formula_cache(previous_file_path),
+        inspect_summary_formula_cache(current_file_path),
+    ]
+    missing = [
+        d for d in diagnostics
+        if not d["summary_exists"] or int(d["missing_cached_formula_cells"]) > 0
+    ]
+
+    for d in diagnostics:
+        logger.info(
+            "[%s] Summary cache check: path=%s formulas=%s missing_cached=%s sample_missing=%s",
+            domain,
+            d["path"],
+            d["formula_cells"],
+            d["missing_cached_formula_cells"],
+            list(d["missing_cached_coordinates"])[:10],
+        )
+
+    if not missing:
+        logger.info("[%s] Summary cached values available; skipping Excel automation.", domain)
+        status = "Excel recalculation skipped; Summary cached values were available."
+        LAST_EXCEL_RECALCULATION_STATUS[domain.upper()] = status
+        return
+
+    if all(summary_missing_cache_is_supported(str(d["path"])) for d in missing):
+        logger.info(
+            "[%s] Missing Summary cached values use supported formulas; "
+            "skipping Excel and calculating Summary values in Python.",
+            domain,
+        )
+        status = "Excel recalculation skipped; Summary values were calculated locally."
+        LAST_EXCEL_RECALCULATION_STATUS[domain.upper()] = status
+        return
+
+    if mode == "never":
+        logger.warning(
+            "[%s] Summary cached values are missing, but Excel recalculation is disabled.",
+            domain,
+        )
+        status = (
+            "Excel recalculation disabled; missing Summary cached values were not refreshed."
+        )
+        LAST_EXCEL_RECALCULATION_STATUS[domain.upper()] = status
+        return
+
+    logger.info(
+        "[%s] Summary cached values missing; falling back to Excel recalculation.",
+        domain,
+    )
+    save_workbook(previous_file_path)
+    save_workbook(current_file_path)
+    status = "Excel recalculation used because unsupported Summary cached values were missing."
+    LAST_EXCEL_RECALCULATION_STATUS[domain.upper()] = status
 
 
 # ---------------------------------------------------------------------------
@@ -107,9 +205,8 @@ def run_comparison(
 
     powerpoint_output_path = os.path.join(result_folder, "Analysis_Summary_APM.pptx")
 
-    # 1. Recalculate formulas in both input workbooks
-    save_workbook(previous_file_path)
-    save_workbook(current_file_path)
+    # 1. Ensure formulas in Summary can be read as values.
+    _prepare_summary_formula_values(previous_file_path, current_file_path, config, "APM")
 
     # 2. Check controllers
     if not check_controllers_match(previous_file_path, current_file_path):
@@ -192,9 +289,8 @@ def run_comparison_brum(
     comparison_sum_path = os.path.join(result_folder, comparison_sum_name)
     powerpoint_output_path = os.path.join(result_folder, "Analysis_Summary_BRUM.pptx")
 
-    # 1. Recalculate formulas
-    save_workbook(previous_file_path)
-    save_workbook(current_file_path)
+    # 1. Ensure formulas in Summary can be read as values.
+    _prepare_summary_formula_values(previous_file_path, current_file_path, config, "BRUM")
 
     # 2. Controllers must match
     if not check_controllers_match(previous_file_path, current_file_path):
@@ -277,9 +373,8 @@ def run_comparison_mrum(
     comparison_sum_path = os.path.join(result_folder, comparison_sum_name)
     powerpoint_output_path = os.path.join(result_folder, "Analysis_Summary_MRUM.pptx")
 
-    # 1. Recalculate formulas
-    save_workbook(previous_file_path)
-    save_workbook(current_file_path)
+    # 1. Ensure formulas in Summary can be read as values.
+    _prepare_summary_formula_values(previous_file_path, current_file_path, config, "MRUM")
 
     # 2. Controllers must match
     if not check_controllers_match(previous_file_path, current_file_path):
@@ -452,4 +547,3 @@ def save_matched_files(
     curr_file.save(curr_path)
 
     return prev_path, curr_path
-

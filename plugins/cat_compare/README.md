@@ -36,6 +36,10 @@ You can compare CAT workbooks with the following naming conventions:
 
 Optional / Notes:
 - Internet access is only needed if your UI loads external assets (e.g., Chart.js via CDN). If you bundle assets locally, internet is not required.
+- Excel recalculation is configurable with `excel_recalculation_mode` in `config.json`:
+  - `auto`: use cached Summary formula values when present, otherwise fall back to Excel automation.
+  - `always`: always use Excel automation before comparison. This is the rollback setting for the current proven behavior.
+  - `never`: never use Excel automation; useful only for diagnostics/proof testing.
 
 --------------------------------------------------------------------------------
 
@@ -197,6 +201,7 @@ Because the tool may open Excel to recalc formulas:
 - Make sure Excel is installed and opens normally
 - Close any “blocked” Excel dialogs (first-run prompts, file recovery, etc.)
 - On macOS, Excel automation may require permissions the first time
+- If the no-Excel proof path causes bad Summary values, set `excel_recalculation_mode` back to `always` in `config.json`.
 
 7) Controller mismatch
 If Previous + Current are from different Controllers, the tool will stop.

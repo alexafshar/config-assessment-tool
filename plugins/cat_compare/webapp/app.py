@@ -27,6 +27,7 @@ from compare_tool.config import load_config
 from compare_tool.logging_config import setup_logging
 from compare_tool.insights import build_comparison_json
 from compare_tool.service import (
+    get_excel_recalculation_status,
     run_comparison,        # APM
     run_comparison_brum,   # BRUM
     run_comparison_mrum,   # MRUM
@@ -59,6 +60,13 @@ app = Flask(
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 os.makedirs(HISTORY_FOLDER, exist_ok=True)
+
+
+def excel_status_note(domain: str) -> str:
+    status = get_excel_recalculation_status(domain)
+    if not status:
+        return ""
+    return f"<br><span style='color:#9fb3c8;'>{status}</span>"
 
 
 @app.route("/", methods=["GET"])
@@ -114,6 +122,7 @@ def upload_apm():
         f"Download Excel <a href='/download/{os.path.basename(output_file)}' style='color:#32CD32;'>here</a> "
         f"and PowerPoint <a href='/download/{os.path.basename(ppt_file)}' style='color:#32CD32;'>here</a>. "
         "Insights snapshot has been generated and will be available on the Insights page."
+        f"{excel_status_note('APM')}"
     )
     return render_template("index.html", message=msg)
 
@@ -162,6 +171,7 @@ def upload_brum():
         f"Download Excel <a href='/download/{os.path.basename(output_file)}' style='color:#32CD32;'>here</a> "
         f"and PowerPoint <a href='/download/{os.path.basename(ppt_file)}' style='color:#32CD32;'>here</a>. "
         "BRUM Insights snapshot has been generated and will be available on the Insights page."
+        f"{excel_status_note('BRUM')}"
     )
     return render_template("index.html", message=msg)
 
@@ -202,6 +212,7 @@ def upload_mrum():
         f"Download Excel <a href='/download/{os.path.basename(output_file)}' style='color:#32CD32;'>here</a> "
         f"and PowerPoint <a href='/download/{os.path.basename(ppt_file)}' style='color:#32CD32;'>here</a>. "
         "MRUM Insights snapshot has been generated and will be available on the Insights page."
+        f"{excel_status_note('MRUM')}"
     )
     return render_template("index.html", message=msg)
 
@@ -282,7 +293,8 @@ def upload_folders():
             results[domain] = {
                 'xlsx': os.path.basename(output_file),
                 'pptx': os.path.basename(ppt_file),
-                'json': json_name
+                'json': json_name,
+                'excel_status': get_excel_recalculation_status(domain)
             }
             
             logging.info(f"[FOLDERS] Successfully processed {domain}")
@@ -300,6 +312,8 @@ def upload_folders():
             message_parts.append(f"• Results: <a href='/download/{files['xlsx']}' style='color: #32CD32;'>Download Excel</a><br>")
             message_parts.append(f"• PowerPoint: <a href='/download/{files['pptx']}' style='color: #32CD32;'>Download PPT</a><br>")
             message_parts.append(f"• JSON: <a href='/download/{files['json']}' style='color: #32CD32;'>Download JSON</a><br><br>")
+            if files.get('excel_status'):
+                message_parts.append(f"<span style='color:#9fb3c8;'>{files['excel_status']}</span><br><br>")
         
         if errors:
             message_parts.append("<br><strong>Warnings:</strong><br>")
@@ -607,5 +621,4 @@ if __name__ == "__main__":
     # Give Flask a moment to start, then open the browser
     threading.Timer(1.0, open_browser).start()
     app.run(host="127.0.0.1", port=5000, debug=False)
-
 
