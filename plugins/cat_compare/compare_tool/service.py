@@ -562,6 +562,15 @@ def save_matched_files(
     prev_path = os.path.join(upload_folder, f"previous_{data_type}.xlsx")
     curr_path = os.path.join(upload_folder, f"current_{data_type}.xlsx")
 
+    try:
+        prev_file.stream.seek(0)
+    except Exception:
+        pass
+    try:
+        curr_file.stream.seek(0)
+    except Exception:
+        pass
+
     prev_file.save(prev_path)
     curr_file.save(curr_path)
 

@@ -16,13 +16,16 @@ Key Routes:
 
 import os
 import json
+import re
+import shutil
 import threading
 import webbrowser
 import datetime as dt
+from io import BytesIO
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Optional, Tuple
 from flask import Flask, request, jsonify, render_template, send_from_directory
-from typing import Optional
+from openpyxl import load_workbook
 from compare_tool.config import load_config
 from compare_tool.logging_config import setup_logging
 from compare_tool.insights import build_comparison_json
@@ -93,6 +96,489 @@ def latest_summary_file(domain: str, controller: Optional[str] = None) -> Option
     if not candidates:
         return None
     return sorted(candidates)[-1]
+
+
+def run_domain_comparison(domain: str, previous_path: str, current_path: str) -> Tuple[str, str]:
+    domain = (domain or "").lower()
+    if domain == "apm":
+        return run_comparison(
+            previous_file_path=previous_path,
+            current_file_path=current_path,
+            config=config,
+        )
+    if domain == "brum":
+        return run_comparison_brum(
+            previous_file_path=previous_path,
+            current_file_path=current_path,
+            config=config,
+        )
+    if domain == "mrum":
+        return run_comparison_mrum(
+            previous_file_path=previous_path,
+            current_file_path=current_path,
+            config=config,
+        )
+    raise ValueError(f"Unsupported domain: {domain}")
+
+
+def _safe_slug(value: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", value or "").strip("_")
+    return cleaned[:80] or "snapshot"
+
+
+def copy_progression_output(path: str, domain: str, baseline: str, current: str, suffix: str) -> str:
+    ext = Path(path).suffix
+    name = (
+        f"Progression_{domain.upper()}_"
+        f"{_safe_slug(baseline)}_to_{_safe_slug(current)}_"
+        f"{suffix}{ext}"
+    )
+    target = os.path.join(RESULT_FOLDER, name)
+    shutil.copy2(path, target)
+    return target
+
+
+def relative_parts(filename: str) -> List[str]:
+    return [p for p in re.split(r"[\\/]+", filename or "") if p]
+
+
+MONTHS = {
+    "jan": "01",
+    "feb": "02",
+    "mar": "03",
+    "apr": "04",
+    "may": "05",
+    "jun": "06",
+    "jul": "07",
+    "aug": "08",
+    "sep": "09",
+    "sept": "09",
+    "oct": "10",
+    "nov": "11",
+    "dec": "12",
+}
+
+
+def is_ignored_upload(filename: str) -> bool:
+    parts = relative_parts(filename)
+    basename = parts[-1] if parts else filename or ""
+    lower = basename.lower()
+    return (
+        not basename
+        or basename.startswith(".")
+        or basename.startswith("~$")
+        or lower in {"thumbs.db", "desktop.ini"}
+    )
+
+
+def detect_assessment_date(value: str) -> Optional[str]:
+    match = re.search(r"(20\d{2})[-_ .]?([01]\d)[-_ .]?([0-3]\d)", value or "")
+    if match:
+        return match.group(1) + match.group(2) + match.group(3)
+    match = re.search(r"\b(20\d{6})\b", value or "")
+    if match:
+        return match.group(1)
+    match = re.search(r"\b([01]?\d)[-_ .]([0-3]?\d)[-_ .](\d{2})\b", value or "")
+    if match:
+        month = int(match.group(1))
+        day = int(match.group(2))
+        year = 2000 + int(match.group(3))
+        if 1 <= month <= 12 and 1 <= day <= 31:
+            return f"{year:04d}{month:02d}{day:02d}"
+    match = re.search(
+        r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[-_ .]?(\d{2,4})\b",
+        value or "",
+        re.IGNORECASE,
+    )
+    if match:
+        month = MONTHS[match.group(1).lower()[:3]]
+        year_text = match.group(2)
+        year = int(year_text) if len(year_text) == 4 else 2000 + int(year_text)
+        return f"{year:04d}{month}01"
+    return None
+
+
+def format_workbook_date(value: object) -> Optional[str]:
+    if isinstance(value, dt.datetime):
+        return value.strftime("%Y%m%d")
+    if isinstance(value, dt.date):
+        return value.strftime("%Y%m%d")
+    if value:
+        return detect_assessment_date(str(value))
+    return None
+
+
+def sheet_by_name(workbook, wanted: str):
+    wanted_lower = wanted.strip().lower()
+    for sheet_name in workbook.sheetnames:
+        if sheet_name.strip().lower() == wanted_lower:
+            return workbook[sheet_name]
+    return None
+
+
+def cell_text(value: object) -> str:
+    return str(value or "").strip()
+
+
+def normalized_cell_text(value: object) -> str:
+    return cell_text(value).lstrip("\ufeff").lower()
+
+
+def scan_sheet_date(workbook) -> Optional[str]:
+    date_labels = ("date", "generated", "created", "export", "assessment")
+    for sheet_name in workbook.sheetnames[:6]:
+        ws = workbook[sheet_name]
+        max_row = min(ws.max_row or 1, 30)
+        max_col = min(ws.max_column or 1, 12)
+        for row in ws.iter_rows(min_row=1, max_row=max_row, max_col=max_col, values_only=True):
+            values = list(row)
+            for idx, value in enumerate(values):
+                direct = format_workbook_date(value)
+                if direct and any(label in cell_text(other).lower() for other in values for label in date_labels):
+                    return direct
+                text = cell_text(value).lower()
+                if not any(label in text for label in date_labels):
+                    continue
+                for nearby in values[idx:idx + 4]:
+                    found = format_workbook_date(nearby)
+                    if found:
+                        return found
+    return None
+
+
+def scan_workbook_controller(workbook) -> Optional[str]:
+    ws = sheet_by_name(workbook, "Analysis")
+    if ws is None:
+        return None
+
+    if normalized_cell_text(ws["A1"].value) == "controller":
+        controllers = []
+        for row in ws.iter_rows(
+            min_row=2,
+            max_row=min(ws.max_row or 2, 5001),
+            min_col=1,
+            max_col=1,
+            values_only=True,
+        ):
+            value = cell_text(row[0] if row else "")
+            if value and normalized_cell_text(value) != "controller" and value not in controllers:
+                controllers.append(value)
+            if len(controllers) > 1:
+                return "Multiple controllers"
+        return controllers[0] if controllers else None
+
+    header_row = None
+    controller_col = None
+    max_header_row = min(ws.max_row or 1, 20)
+    for row in ws.iter_rows(min_row=1, max_row=max_header_row):
+        for cell in row:
+            if normalized_cell_text(cell.value) == "controller":
+                header_row = cell.row
+                controller_col = cell.column
+                break
+        if controller_col:
+            break
+
+    if not header_row or not controller_col:
+        return None
+
+    controllers = []
+    for row in ws.iter_rows(
+        min_row=header_row + 1,
+        max_row=min(ws.max_row or header_row + 1, header_row + 5000),
+        min_col=controller_col,
+        max_col=controller_col,
+        values_only=True,
+    ):
+        value = cell_text(row[0] if row else "")
+        if value and normalized_cell_text(value) != "controller" and value not in controllers:
+            controllers.append(value)
+        if len(controllers) > 1:
+            return "Multiple controllers"
+    return controllers[0] if controllers else None
+
+
+def workbook_preview_metadata(file_obj: object) -> Dict[str, object]:
+    cached = getattr(file_obj, "_cat_preview_metadata", None)
+    if cached is not None:
+        return cached
+
+    stream = getattr(file_obj, "stream", None)
+    if stream is None:
+        return {"date": None, "controller": None}
+
+    metadata: Dict[str, object] = {
+        "date": None,
+        "controller": None,
+    }
+    try:
+        stream.seek(0)
+        workbook_data = stream.read()
+        workbook = load_workbook(BytesIO(workbook_data), read_only=True, data_only=True)
+        metadata["date"] = (
+            format_workbook_date(workbook.properties.created)
+            or format_workbook_date(workbook.properties.modified)
+            or scan_sheet_date(workbook)
+        )
+        metadata["controller"] = scan_workbook_controller(workbook)
+        workbook.close()
+    except Exception:
+        pass
+    finally:
+        try:
+            stream.seek(0)
+        except Exception:
+            pass
+
+    try:
+        setattr(file_obj, "_cat_preview_metadata", metadata)
+    except Exception:
+        pass
+    return metadata
+
+
+def workbook_metadata_date(file_obj: object) -> Optional[str]:
+    return workbook_preview_metadata(file_obj).get("date")
+
+
+def workbook_controller(file_obj: object) -> Optional[str]:
+    return workbook_preview_metadata(file_obj).get("controller")
+
+
+def workbook_metadata_assessment_date(files: List[object]) -> Optional[str]:
+    dated_files = []
+    for file in files:
+        if not domain_for_filename(getattr(file, "filename", "")):
+            continue
+        file_date = workbook_metadata_date(file)
+        if file_date:
+            dated_files.append(file_date)
+    return min(dated_files) if dated_files else None
+
+
+def best_assessment_date(label: str, files: List[object]) -> Optional[str]:
+    metadata_date = workbook_metadata_assessment_date(files)
+    if metadata_date:
+        return metadata_date
+    date = detect_assessment_date(label)
+    if date:
+        return date
+    dated_files = []
+    for file in files:
+        filename = getattr(file, "filename", "")
+        file_date = detect_assessment_date(filename) or workbook_metadata_date(file)
+        if file_date:
+            dated_files.append(file_date)
+    return min(dated_files) if dated_files else None
+
+
+def domain_for_filename(filename: str) -> Optional[str]:
+    text = (filename or "").lower()
+    if "raw" in text or "maturityassessment" not in text:
+        return None
+    if "apm" in text:
+        return "APM"
+    if "brum" in text:
+        return "BRUM"
+    if "mrum" in text:
+        return "MRUM"
+    return None
+
+
+def uploaded_file_modified_date(filename: str, uploaded_dates: Optional[Dict[str, str]]) -> Optional[str]:
+    if not uploaded_dates:
+        return None
+    exact = uploaded_dates.get(filename)
+    if exact:
+        return exact
+    normalized = "/".join(relative_parts(filename))
+    return uploaded_dates.get(normalized)
+
+
+def progression_group_summary(name: str, files: List[object], uploaded_dates: Optional[Dict[str, str]] = None) -> dict:
+    domain_files = [
+        f for f in files
+        if domain_for_filename(getattr(f, "filename", ""))
+    ]
+    metadata_date = workbook_metadata_assessment_date(domain_files)
+    modified_dates = sorted(
+        {
+            date
+            for date in (
+                uploaded_file_modified_date(getattr(f, "filename", ""), uploaded_dates)
+                for f in domain_files
+            )
+            if date
+        }
+    )
+    modified_date = modified_dates[0] if modified_dates else None
+    explicit_date = None if metadata_date or modified_date else detect_assessment_date(" ".join([name] + [getattr(f, "filename", "") for f in files]))
+    domains = sorted(
+        {
+            domain
+            for domain in (domain_for_filename(getattr(f, "filename", "")) for f in domain_files)
+            if domain
+        }
+    )
+    controllers = sorted(
+        {
+            controller
+            for controller in (workbook_controller(f) for f in domain_files)
+            if controller
+        }
+    )
+    controller_hints = sorted(
+        {
+            hint
+            for hint in (detect_controller_hint(getattr(f, "filename", "")) for f in files)
+            if hint
+        }
+    )[:4]
+    controller = (
+        controllers[0]
+        if len(controllers) == 1
+        else "Mixed"
+        if len(controllers) > 1
+        else "Not inspected"
+        if not domain_files
+        else "Unknown"
+    )
+    nested_folder = any(
+        len(relative_parts(getattr(file, "filename", ""))) > 3
+        for file in files
+    )
+    return {
+        "name": name,
+        "date": metadata_date or modified_date or explicit_date or "Unknown",
+        "dateSource": (
+            "workbook metadata"
+            if metadata_date
+            else "file modified"
+            if modified_date
+            else "folder/filename"
+            if explicit_date
+            else "unknown"
+        ),
+        "domains": domains,
+        "controllers": controllers,
+        "controller": controller,
+        "controllerHints": controller_hints,
+        "nestedFolder": nested_folder,
+        "nestedFolderMessage": (
+            "Nested folder detected. Browse one level deeper if this row is not the assessment set you want."
+            if nested_folder
+            else ""
+        ),
+    }
+
+
+def detect_controller_hint(value: str) -> str:
+    parts = relative_parts(value)
+    basename = Path(parts[-1] if parts else value or "").stem
+    tokens = re.split(r"[^A-Za-z0-9.]+", basename)
+    stop = {
+        "apm",
+        "brum",
+        "mrum",
+        "raw",
+        "maturityassessment",
+        "maturity",
+        "assessment",
+        "controller",
+        "config",
+        "configuration",
+        "export",
+        "report",
+    }
+    cleaned = []
+    for token in tokens:
+        low = token.lower()
+        if not token or low in stop:
+            continue
+        if detect_assessment_date(token):
+            continue
+        cleaned.append(token)
+    if not cleaned:
+        return ""
+    return "_".join(cleaned[:3])
+
+
+def group_uploaded_assessment_folders(files: List[object]) -> List[Tuple[str, List[object]]]:
+    valid = [
+        f for f in files
+        if getattr(f, "filename", "") and not is_ignored_upload(getattr(f, "filename", ""))
+    ]
+    if not valid:
+        return []
+
+    def flat_group_name(file: object) -> Optional[str]:
+        filename = getattr(file, "filename", "")
+        if not domain_for_filename(filename):
+            return None
+        date = workbook_metadata_date(file) or detect_assessment_date(filename)
+        if not date:
+            return None
+        controller = workbook_controller(file)
+        controller_hint = controller or detect_controller_hint(filename)
+        return f"{controller_hint} {date}".strip() or date
+
+    def add_flat_groups(grouped: dict, flat_files: List[object]) -> None:
+        for file in flat_files:
+            group_name = flat_group_name(file)
+            if not group_name:
+                continue
+            grouped.setdefault(group_name, []).append(file)
+
+    split_names = [relative_parts(getattr(f, "filename", "")) for f in valid]
+    first_segments = [parts[0] for parts in split_names if parts]
+    has_common_root = bool(first_segments) and len(set(first_segments)) == 1
+
+    if has_common_root and any(len(parts) > 2 for parts in split_names):
+        grouped = {}
+        loose_files = []
+        for file in valid:
+            parts = relative_parts(getattr(file, "filename", ""))
+            if len(parts) < 3:
+                loose_files.append(file)
+                continue
+            group_name = parts[1]
+            grouped.setdefault(group_name, []).append(file)
+        add_flat_groups(grouped, loose_files)
+        if len(grouped) >= 2:
+            return sorted(grouped.items(), key=lambda item: folder_sort_key(item[0], item[1]))
+
+    grouped = {}
+    add_flat_groups(grouped, valid)
+
+    return sorted(grouped.items(), key=lambda item: folder_sort_key(item[0], item[1]))
+
+
+def folder_sort_key(folder_name: str, files: List[object]):
+    return (best_assessment_date(folder_name, files) or "99999999", folder_name.lower())
+
+
+def has_nested_assessment_folders(files: List[object]) -> bool:
+    valid_parts = [
+        relative_parts(getattr(file, "filename", ""))
+        for file in files
+        if getattr(file, "filename", "") and not is_ignored_upload(getattr(file, "filename", ""))
+    ]
+    roots = [parts[0] for parts in valid_parts if parts]
+    has_common_root = bool(roots) and len(set(roots)) == 1
+    if not has_common_root:
+        return False
+    return any(len(parts) > 3 for parts in valid_parts)
+
+
+def progression_preview_sort_key(group: dict):
+    controller = group.get("controller") or ""
+    controller_key = controller.lower()
+    if controller in {"Unknown", "Mixed", "Not inspected"}:
+        controller_key = f"zz_{controller_key}"
+    date_key = group.get("date") or "99999999"
+    if date_key == "Unknown":
+        date_key = "99999999"
+    return (controller_key, date_key, (group.get("name") or "").lower())
 
 
 @app.route("/", methods=["GET"])
@@ -291,25 +777,7 @@ def upload_folders():
                 errors.append(f"No matching {domain} files found in the selected folders.")
                 continue
             
-            # Process based on data type
-            if data_type == 'apm':
-                output_file, ppt_file = run_comparison(
-                    previous_file_path=previous_path,
-                    current_file_path=current_path,
-                    config=config,
-                )
-            elif data_type == 'brum':
-                output_file, ppt_file = run_comparison_brum(
-                    previous_file_path=previous_path,
-                    current_file_path=current_path,
-                    config=config,
-                )
-            elif data_type == 'mrum':
-                output_file, ppt_file = run_comparison_mrum(
-                    previous_file_path=previous_path,
-                    current_file_path=current_path,
-                    config=config,
-                )
+            output_file, ppt_file = run_domain_comparison(data_type, previous_path, current_path)
             
             # Build JSON snapshot for insights
             json_path, json_name, _ = build_comparison_json(
@@ -357,6 +825,202 @@ def upload_folders():
         return render_template('index.html', message=message, active_tab="folders"), 400
     
     return render_template('index.html', message=message, active_tab="folders")
+
+
+@app.route("/upload_progression_folders", methods=["POST"])
+def upload_progression_folders():
+    if "progression_folder" not in request.files:
+        return render_template(
+            "index.html",
+            message="Error: Please select a parent folder containing multiple assessment folders.",
+            active_tab="folders",
+        ), 400
+
+    selected_types = request.form.getlist("progression_data_types")
+    if not selected_types:
+        return render_template(
+            "index.html",
+            message="Error: Please select at least one data type for progression compare.",
+            active_tab="folders",
+        ), 400
+
+    grouped = group_uploaded_assessment_folders(request.files.getlist("progression_folder"))
+    baseline_group = request.form.get("progression_baseline_group", "").strip()
+    selected_groups_raw = request.form.get("progression_selected_groups", "")
+    selected_groups = {
+        name for name in selected_groups_raw.split("||")
+        if name.strip()
+    }
+    grouped_by_name = {name: files for name, files in grouped}
+
+    if not baseline_group or baseline_group not in grouped_by_name:
+        return render_template(
+            "index.html",
+            message="Error: Select the baseline group before running progression compare.",
+            active_tab="folders",
+        ), 400
+
+    selected_groups.discard(baseline_group)
+    compare_groups = [(name, files) for name, files in grouped if name in selected_groups]
+
+    if len(compare_groups) < 1:
+        return render_template(
+            "index.html",
+            message=(
+                "Error: Progression Compare needs a selected baseline and at least one selected comparison group."
+            ),
+            active_tab="folders",
+        ), 400
+
+    baseline_name, baseline_files = baseline_group, grouped_by_name[baseline_group]
+    run_suffix_base = ts_now()
+    results = []
+    errors = []
+
+    logging.info(
+        "[PROGRESSION] Baseline folder=%s, current folders=%s, selected=%s",
+        baseline_name,
+        [name for name, _ in compare_groups],
+        selected_types,
+    )
+
+    for current_index, (current_name, current_files) in enumerate(compare_groups, start=1):
+        matches = find_best_matching_files(baseline_files, current_files)
+        for data_type in selected_types:
+            domain = data_type.upper()
+            try:
+                previous_path, current_path = save_matched_files(matches, UPLOAD_FOLDER, data_type)
+                if not previous_path or not current_path:
+                    errors.append(
+                        f"{domain}: No matching files found for {baseline_name} to {current_name}."
+                    )
+                    continue
+
+                output_file, ppt_file = run_domain_comparison(data_type, previous_path, current_path)
+                pair_suffix = f"{run_suffix_base}_{current_index:02d}_{domain.lower()}"
+                stable_output = copy_progression_output(
+                    output_file, domain, baseline_name, current_name, pair_suffix
+                )
+                stable_ppt = copy_progression_output(
+                    ppt_file, domain, baseline_name, current_name, pair_suffix
+                )
+
+                json_path, json_name, _ = build_comparison_json(
+                    domain=domain,
+                    comparison_result_path=output_file,
+                    current_file_path=current_path,
+                    previous_file_path=previous_path,
+                    result_folder=RESULT_FOLDER,
+                    meta={"compareDate": f"{run_suffix_base}_{current_index:02d}_{domain.lower()}"},
+                )
+
+                results.append(
+                    {
+                        "domain": domain,
+                        "baseline": baseline_name,
+                        "current": current_name,
+                        "xlsx": os.path.basename(stable_output),
+                        "pptx": os.path.basename(stable_ppt),
+                        "json": json_name,
+                        "excel_status": get_excel_recalculation_status(domain),
+                    }
+                )
+            except Exception as e:
+                logging.error(
+                    "[PROGRESSION] Error processing %s %s -> %s: %s",
+                    domain,
+                    baseline_name,
+                    current_name,
+                    e,
+                    exc_info=True,
+                )
+                errors.append(f"{domain} {baseline_name} to {current_name}: {str(e)}")
+
+    if results:
+        parts = [
+            "<strong>Progression Compare completed.</strong><br>",
+            f"Baseline group: <strong>{baseline_name}</strong><br>",
+            f"Compared against {len(compare_groups)} selected group(s).<br><br>",
+        ]
+        for row in results:
+            parts.append(
+                f"<strong>{row['domain']}:</strong> "
+                f"{row['baseline']} → {row['current']}<br>"
+            )
+            parts.append(
+                f"• Results: <a href='/download/{row['xlsx']}' style='color:#32CD32;'>Excel</a> "
+                f"• PowerPoint: <a href='/download/{row['pptx']}' style='color:#32CD32;'>PPT</a> "
+                f"• JSON: <a href='/download/{row['json']}' style='color:#32CD32;'>JSON</a><br>"
+            )
+            if row.get("excel_status"):
+                parts.append(f"<span style='color:#9fb3c8;'>{row['excel_status']}</span><br>")
+            parts.append("<br>")
+        if errors:
+            parts.append("<strong>Warnings:</strong><br>")
+            for error in errors:
+                parts.append(f"• {error}<br>")
+        message = "".join(parts)
+        return render_template("index.html", message=message, active_tab="folders")
+
+    message = "Error: No progression comparisons could be processed.<br>" + "<br>".join(errors)
+    return render_template("index.html", message=message, active_tab="folders"), 400
+
+
+@app.route("/api/progression_preview", methods=["POST"])
+def api_progression_preview():
+    if "progression_folder" not in request.files:
+        return jsonify({"groups": [], "warnings": ["No folder files were provided."]}), 400
+
+    files = request.files.getlist("progression_folder")
+    uploaded_dates = {}
+    for entry in request.form.getlist("progression_file_modified"):
+        if "||" not in entry:
+            continue
+        filename, value = entry.split("||", 1)
+        if value:
+            uploaded_dates[filename] = value
+
+    grouped = group_uploaded_assessment_folders(files)
+    groups = []
+    warnings = []
+    if has_nested_assessment_folders(files):
+        warnings.append(
+            "Nested folders detected. For best results, browse one level deeper and select the folder containing the assessment folders or workbooks."
+        )
+
+    for index, (name, group_files) in enumerate(grouped):
+        summary = progression_group_summary(name, group_files, uploaded_dates)
+        summary["role"] = "Select"
+        summary["includeDefault"] = bool(summary["domains"])
+        summary["baselineDefault"] = False
+        if not summary["domains"]:
+            summary["reason"] = "Excluded: no APM, BRUM, or MRUM MaturityAssessment files found."
+        else:
+            summary["reason"] = "Select as baseline if this is the earliest assessment, or compare against the chosen baseline."
+        groups.append(summary)
+
+    groups.sort(key=progression_preview_sort_key)
+
+    if len(groups) < 2:
+        warnings.append(
+            "Could not find at least two assessment groups. Use subfolders, filename dates, or workbook metadata."
+        )
+    inspectable_groups = [g for g in groups if g.get("domains")]
+    controller_values = {
+        g["controller"]
+        for g in inspectable_groups
+        if g.get("controller") not in {"Unknown", "Mixed", "Not inspected"}
+    }
+    if len(controller_values) > 1:
+        warnings.append(
+            "Different workbook controllers were found. Untick groups that do not belong to the baseline controller."
+        )
+    if any(g.get("controller") in {"Unknown", "Mixed"} for g in inspectable_groups):
+        warnings.append(
+            "Some controllers could not be read or were mixed. The final compare will still block mismatched controllers."
+        )
+
+    return jsonify({"groups": groups, "warnings": warnings})
 
 
 #####################################################################################
