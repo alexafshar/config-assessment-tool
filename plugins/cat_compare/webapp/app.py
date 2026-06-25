@@ -833,7 +833,7 @@ def upload_progression_folders():
         return render_template(
             "index.html",
             message="Error: Please select a parent folder containing multiple assessment folders.",
-            active_tab="folders",
+            active_tab="progression",
         ), 400
 
     selected_types = request.form.getlist("progression_data_types")
@@ -841,7 +841,7 @@ def upload_progression_folders():
         return render_template(
             "index.html",
             message="Error: Please select at least one data type for progression compare.",
-            active_tab="folders",
+            active_tab="progression",
         ), 400
 
     grouped = group_uploaded_assessment_folders(request.files.getlist("progression_folder"))
@@ -857,7 +857,7 @@ def upload_progression_folders():
         return render_template(
             "index.html",
             message="Error: Select the baseline group before running progression compare.",
-            active_tab="folders",
+            active_tab="progression",
         ), 400
 
     selected_groups.discard(baseline_group)
@@ -869,7 +869,7 @@ def upload_progression_folders():
             message=(
                 "Error: Progression Compare needs a selected baseline and at least one selected comparison group."
             ),
-            active_tab="folders",
+            active_tab="progression",
         ), 400
 
     baseline_name, baseline_files = baseline_group, grouped_by_name[baseline_group]
@@ -960,10 +960,10 @@ def upload_progression_folders():
             for error in errors:
                 parts.append(f"• {error}<br>")
         message = "".join(parts)
-        return render_template("index.html", message=message, active_tab="folders")
+        return render_template("index.html", message=message, active_tab="progression")
 
     message = "Error: No progression comparisons could be processed.<br>" + "<br>".join(errors)
-    return render_template("index.html", message=message, active_tab="folders"), 400
+    return render_template("index.html", message=message, active_tab="progression"), 400
 
 
 @app.route("/api/progression_preview", methods=["POST"])
