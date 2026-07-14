@@ -36,6 +36,20 @@ http://127.0.0.1:5000/
 
 Stop the server with `Ctrl + C`.
 
+To check a machine before starting the app:
+
+```bash
+python3 run_tool.py --check
+```
+
+On Windows:
+
+```powershell
+python run_tool.py --check
+```
+
+This prints the detected operating system, CPU architecture, Python version, writable folder status, and whether Excel is visible to the launcher.
+
 ---
 
 ## Supported Workbooks

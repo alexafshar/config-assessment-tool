@@ -15,8 +15,11 @@ Key Functions:
 
 import os
 import logging
+from io import BytesIO
 from typing import Dict, Tuple, Optional, Any, List
 from pathlib import Path
+
+from openpyxl import load_workbook
 
 from .excel_io import (
     inspect_summary_formula_cache,
@@ -482,17 +485,115 @@ def _domain_score(filename: str, domain: str) -> int:
     return score
 
 
+def _cell_text(value: object) -> str:
+    return str(value or "").strip()
+
+
+def _norm_cell(value: object) -> str:
+    return _cell_text(value).lstrip("\ufeff").lower()
+
+
+def _workbook_domain(file_obj: Any) -> Optional[str]:
+    cached = getattr(file_obj, "_cat_workbook_domain", None)
+    if cached is not None:
+        return cached
+
+    filename = getattr(file_obj, "filename", "")
+    if not filename or _is_raw_candidate(filename):
+        return None
+
+    stream = getattr(file_obj, "stream", None)
+    if stream is None:
+        return None
+
+    detected = None
+    try:
+        stream.seek(0)
+        workbook_data = stream.read()
+        workbook = load_workbook(BytesIO(workbook_data), read_only=True, data_only=True)
+        sheet_names = {name.lower(): name for name in workbook.sheetnames}
+        analysis_name = sheet_names.get("analysis")
+        if analysis_name:
+            ws = workbook[analysis_name]
+
+            component_col = None
+            header_row = None
+            for row in ws.iter_rows(min_row=1, max_row=min(ws.max_row or 1, 20)):
+                for cell in row:
+                    if _norm_name(_cell_text(cell.value)) == "componenttype":
+                        component_col = cell.column
+                        header_row = cell.row
+                        break
+                if component_col:
+                    break
+
+            if component_col and header_row:
+                values = []
+                for row in ws.iter_rows(
+                    min_row=header_row + 1,
+                    max_row=min(ws.max_row or header_row + 1, header_row + 100),
+                    min_col=component_col,
+                    max_col=component_col,
+                    values_only=True,
+                ):
+                    value = _norm_cell(row[0] if row else "")
+                    if value:
+                        values.append(value)
+                for domain in ("apm", "brum", "mrum"):
+                    if domain in values:
+                        detected = domain
+                        break
+
+        if not detected:
+            joined_sheets = " ".join(name.lower() for name in workbook.sheetnames)
+            for domain in ("apm", "brum", "mrum"):
+                if domain in joined_sheets:
+                    detected = domain
+                    break
+
+        workbook.close()
+    except Exception as exc:
+        logger.debug("Could not inspect workbook domain for %s: %s", filename, exc)
+    finally:
+        try:
+            stream.seek(0)
+        except Exception:
+            pass
+
+    try:
+        setattr(file_obj, "_cat_workbook_domain", detected)
+    except Exception:
+        pass
+    return detected
+
+
+def _candidate_score(file_obj: Any, domain: str) -> int:
+    filename = getattr(file_obj, "filename", "")
+    filename_score = _domain_score(filename, domain)
+    if filename_score >= 0:
+        return filename_score
+
+    workbook_domain = _workbook_domain(file_obj)
+    if workbook_domain == domain:
+        score = 80
+        if "maturityassessment" in _norm_name(filename):
+            score += 50
+        return score
+
+    return -1
+
+
 def _best_candidate(files: List[Any], domain: str) -> Optional[Any]:
     candidates = [
         f
         for f in files
-        if getattr(f, "filename", None) and _domain_score(f.filename, domain) >= 0
+        if getattr(f, "filename", None) and _candidate_score(f, domain) >= 0
     ]
     if not candidates:
         return None
 
     candidates.sort(
-        key=lambda f: (_domain_score(f.filename, domain), len(f.filename or "")),
+        key=lambda f: (_candidate_score(f, domain), len(f.filename or "")),
         reverse=True,
     )
     return candidates[0]
@@ -526,7 +627,7 @@ def find_best_matching_files(
             for cf in current_files:
                 if not getattr(cf, "filename", None):
                     continue
-                if _domain_score(cf.filename, domain) < 0:
+                if _candidate_score(cf, domain) < 0:
                     continue
                 sim = SequenceMatcher(None, prev_key, _norm_name(cf.filename)).ratio()
                 if sim > best_sim:
@@ -538,6 +639,19 @@ def find_best_matching_files(
         matches[domain] = (prev_best, curr_best)
 
     return matches
+
+
+def folder_match_debug_summary(
+    matches: Dict[str, Tuple[Optional[Any], Optional[Any]]]
+) -> Dict[str, Dict[str, Optional[str]]]:
+    summary: Dict[str, Dict[str, Optional[str]]] = {}
+    for domain in ("apm", "brum", "mrum"):
+        prev_file, curr_file = matches.get(domain, (None, None))
+        summary[domain] = {
+            "previous": getattr(prev_file, "filename", None) if prev_file else None,
+            "current": getattr(curr_file, "filename", None) if curr_file else None,
+        }
+    return summary
 
 
 def save_matched_files(

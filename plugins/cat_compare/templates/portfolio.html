@@ -55,6 +55,7 @@
     .stat-label { color:var(--muted); font-size:12px; margin-top:3px; }
     .board { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:10px; }
     .tile { min-height:126px; display:flex; flex-direction:column; justify-content:space-between; background:var(--field); border:1px solid var(--border); border-radius:8px; padding:12px; }
+    .tile:focus-within { outline:2px solid rgba(0,188,235,0.45); outline-offset:2px; }
     .tile.improved { border-color:rgba(53,197,109,0.48); }
     .tile.degraded, .tile.declined { border-color:rgba(208,0,0,0.58); }
     .tile.mixed { border-color:rgba(241,196,15,0.58); }
@@ -62,6 +63,13 @@
     .tile-head { display:flex; align-items:center; gap:8px; }
     .tile-name { font-size:13px; line-height:1.25; overflow-wrap:anywhere; }
     .tile-status { color:var(--muted); font-size:12px; margin-top:5px; }
+    .entity-list { margin-top:8px; display:grid; gap:6px; }
+    .entity-group { border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:7px; }
+    .entity-title { color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:4px; }
+    .entity-items { color:var(--text); font-size:11px; line-height:1.35; overflow-wrap:anywhere; }
+    .tile-actions { display:flex; justify-content:flex-end; margin-top:10px; }
+    .link-btn { border:1px solid rgba(0,188,235,0.4); background:rgba(0,188,235,0.1); color:var(--text); border-radius:8px; padding:7px 9px; cursor:pointer; font-size:12px; }
+    .link-btn:hover { background:rgba(0,188,235,0.18); }
     .counts { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
     .count { border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:7px; }
     .count strong { display:block; font-size:20px; }
@@ -130,6 +138,10 @@
       .count { border:1px solid #e0e6ed; border-radius:8px; padding:5px 6px; background:#f8fafc; }
       .count strong { font-size:18px; color:#111827; }
       .count span { color:#526173; font-size:9px; text-transform:uppercase; font-weight:700; }
+      .entity-group { background:#f8fafc; border:1px solid #e0e6ed; }
+      .entity-title { color:#526173; }
+      .entity-items { color:#111827; font-size:9px; }
+      .tile-actions { display:none; }
       .small, .subtitle, .mini { color:#526173; }
       .empty { background:#fff; color:#526173; }
     }
@@ -233,6 +245,51 @@
     let allApps = [];
     let selectedApps = new Set();
 
+    function storageKey() {
+      const file = snapshotSel.value !== 'LATEST' ? snapshotSel.value : 'LATEST';
+      const controller = controllerFilter.value || 'ALL';
+      return `catComparePortfolio:${domainSel.value}:${file}:${controller}`;
+    }
+    function saveSelectionState() {
+      try {
+        sessionStorage.setItem(storageKey(), JSON.stringify([...selectedApps]));
+      } catch {}
+    }
+    function restoreSelectionState() {
+      try {
+        const raw = sessionStorage.getItem(storageKey());
+        selectedApps = new Set(raw ? JSON.parse(raw) : []);
+      } catch {
+        selectedApps = new Set();
+      }
+    }
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[ch]));
+    }
+    function summarizeEntities(items) {
+      const values = Array.isArray(items) ? items.filter(Boolean) : [];
+      if (!values.length) return 'None';
+      const visible = values.slice(0, 4).map(escapeHtml).join(', ');
+      const remaining = values.length > 4 ? ` +${values.length - 4} more` : '';
+      return `${visible}${remaining}`;
+    }
+    function insightsUrl(appName) {
+      const params = new URLSearchParams({ domain: domainSel.value, app: appName });
+      if (snapshotSel.value !== 'LATEST') params.append('file', snapshotSel.value);
+      else if (controllerFilter.value) params.append('controller', controllerFilter.value);
+      return `/insights?${params.toString()}`;
+    }
+    function openInsights(appName) {
+      saveSelectionState();
+      window.location.href = insightsUrl(appName);
+    }
+
     function humanTs(ts) {
       const parts = (ts || '').split('_');
       if (parts.length !== 2) return ts || '';
@@ -317,6 +374,7 @@
         row.querySelector('input').addEventListener('change', event => {
           if (event.target.checked) selectedApps.add(app.name);
           else selectedApps.delete(app.name);
+          saveSelectionState();
           renderBoard();
           renderPickerInfo();
         });
@@ -352,14 +410,28 @@
         tile.innerHTML = `
           <div>
             <div class="tile-head"><span class="dot ${statusClass(app.status)}"></span><strong>${app.status}</strong></div>
-            <div class="tile-name">${app.name}</div>
+            <div class="tile-name">${escapeHtml(app.name)}</div>
             <div class="tile-status">${app.changed ? `${app.changed} changed entities` : 'No changed entities'}</div>
+            <div class="entity-list">
+              <div class="entity-group">
+                <div class="entity-title">Improved</div>
+                <div class="entity-items">${summarizeEntities(app.upgradedEntities)}</div>
+              </div>
+              <div class="entity-group">
+                <div class="entity-title">Degraded</div>
+                <div class="entity-items">${summarizeEntities(app.downgradedEntities)}</div>
+              </div>
+            </div>
           </div>
           <div class="counts">
             <div class="count"><strong>${app.upgraded}</strong><span>Improved</span></div>
             <div class="count"><strong>${app.downgraded}</strong><span>Degraded</span></div>
           </div>
+          <div class="tile-actions no-print">
+            <button class="link-btn" type="button" data-open-insights="${escapeHtml(app.name)}">Open in Insights</button>
+          </div>
         `;
+        tile.querySelector('[data-open-insights]').addEventListener('click', () => openInsights(app.name));
         board.appendChild(tile);
       });
     }
@@ -380,6 +452,7 @@
       const resp = await fetch(`/api/portfolio?${params.toString()}`);
       const data = await resp.json();
       allApps = data.apps || [];
+      if (!selectedApps.size) restoreSelectionState();
       selectedApps = new Set([...selectedApps].filter(name => allApps.some(app => app.name === name)));
       renderAppList();
       renderBoard();
@@ -387,6 +460,7 @@
 
     domainSel.addEventListener('change', async () => {
       selectedApps.clear();
+      saveSelectionState();
       await loadHistory();
       await loadPortfolio();
     });
@@ -394,22 +468,26 @@
     controllerFilter.addEventListener('change', async () => {
       renderSnapshotOptions(snapshotSel.value);
       selectedApps.clear();
+      saveSelectionState();
       await loadPortfolio();
     });
     snapshotSel.addEventListener('change', async () => {
       updateSnapshotInfo();
       selectedApps.clear();
+      saveSelectionState();
       await loadPortfolio();
     });
     appSearch.addEventListener('input', renderAppList);
     statusFilter.addEventListener('change', renderAppList);
     document.getElementById('selectVisible').addEventListener('click', () => {
       filteredApps().forEach(app => selectedApps.add(app.name));
+      saveSelectionState();
       renderAppList();
       renderBoard();
     });
     document.getElementById('clearSelected').addEventListener('click', () => {
       selectedApps.clear();
+      saveSelectionState();
       renderAppList();
       renderBoard();
     });
@@ -417,8 +495,18 @@
     (async function init() {
       const params = new URLSearchParams(window.location.search);
       const domain = (params.get('domain') || '').toUpperCase();
+      const file = params.get('file') || '';
+      const controller = params.get('controller') || '';
       if (['APM', 'BRUM', 'MRUM'].includes(domain)) domainSel.value = domain;
       await loadHistory();
+      if (controller && Array.from(controllerFilter.options).some(opt => opt.value === controller)) {
+        controllerFilter.value = controller;
+        renderSnapshotOptions(file || snapshotSel.value || 'LATEST');
+      }
+      if (file && Array.from(snapshotSel.options).some(opt => opt.value === file)) {
+        snapshotSel.value = file;
+        updateSnapshotInfo();
+      }
       await loadPortfolio();
     })();
   </script>

@@ -64,6 +64,46 @@ function ensureTrendBox(canvas, heightPx) {
   return wrapper;
 }
 
+function projectedNextValue(values) {
+  const nums = values.map(v => Number(v)).filter(v => Number.isFinite(v));
+  if (nums.length < 3) return null;
+  const n = nums.length;
+  const avgX = (n - 1) / 2;
+  const avgY = nums.reduce((sum, value) => sum + value, 0) / n;
+  let numerator = 0;
+  let denominator = 0;
+  nums.forEach((value, index) => {
+    numerator += (index - avgX) * (value - avgY);
+    denominator += (index - avgX) ** 2;
+  });
+  if (!denominator) return null;
+  const slope = numerator / denominator;
+  const intercept = avgY - slope * avgX;
+  return Math.round(intercept + slope * n);
+}
+
+const chartTextColor = '#e8eef7';
+const chartMutedColor = '#b8c7d8';
+const chartGridColor = 'rgba(232,238,247,0.12)';
+const chartZeroGridColor = 'rgba(232,238,247,0.26)';
+const chartVerticalGridColor = 'rgba(232,238,247,0.05)';
+
+function chartAxisTitle(text) {
+  return {
+    display: true,
+    text,
+    color: chartTextColor,
+    font: { size: 12, weight: '600' }
+  };
+}
+
+function chartTickOptions() {
+  return {
+    color: chartMutedColor,
+    font: { size: 11 }
+  };
+}
+
 /**
  * Desktop-only context menu to delete the currently selected snapshot.
  * Creates the menu dynamically and wires events to the Snapshot selector.
@@ -210,11 +250,27 @@ async function loadTrends(domain, controller) {
 
     const items    = Array.isArray(data.items) ? data.items : [];
     const baseline = data.baselineDate || (items[0]?.previousDate || 'baseline');
-    const labels   = items.map(i => i.currentDate || i.compareDate || 'Run');
+    const labels = items.map(i => i.currentDate || i.compareDate || 'Run');
     const fullLabels = items.map(i => `${i.previousDate || baseline} → ${i.currentDate || 'Current'}`);
     const improved = items.map(i => Number(i.improved ?? 0));
     const degraded = items.map(i => Number(i.degraded ?? 0));
     const net = improved.map((value, index) => value - degraded[index]);
+    const projectedNet = projectedNextValue(net);
+    const hasProjection = projectedNet !== null && net.length >= 3;
+    const chartLabels = hasProjection ? labels.concat('Projected') : labels;
+    const chartFullLabels = hasProjection ? fullLabels.concat('Projected direction') : fullLabels;
+    const actualImproved = hasProjection ? improved.concat(null) : improved;
+    const actualDegraded = hasProjection ? degraded.concat(null) : degraded;
+    const actualNet = hasProjection ? net.concat(null) : net;
+    const projectedNetData = hasProjection
+      ? Array(Math.max(0, net.length - 1)).fill(null).concat([net[net.length - 1], projectedNet])
+      : [];
+    let netMin = Math.min(0, ...net, ...(hasProjection ? [projectedNet] : []));
+    let netMax = Math.max(0, ...net, ...(hasProjection ? [projectedNet] : []));
+    if (netMin === netMax) {
+      netMin -= 1;
+      netMax += 1;
+    }
 
     const overallCanvas = document.getElementById('overallLine');
     const countsCanvas  = document.getElementById('countsStacked');
@@ -228,20 +284,62 @@ async function loadTrends(domain, controller) {
 
     // Update-or-create: combined counts + net movement chart.
     const existingOverall = Chart.getChart ? Chart.getChart(overallCanvas) : null;
-    if (existingOverall && existingOverall.config?.type === 'line' && existingOverall.data?.datasets?.length === 3) {
-      existingOverall.data.labels = labels;
+    if (existingOverall && existingOverall.config?.type === 'line' && existingOverall.data?.datasets?.length >= 3) {
+      existingOverall.data.labels = chartLabels;
       existingOverall.data.datasets[0].label = 'Improved';
-      existingOverall.data.datasets[0].data = improved;
+      existingOverall.data.datasets[0].data = actualImproved;
       existingOverall.data.datasets[0].borderColor = '#35c56d';
       existingOverall.data.datasets[0].backgroundColor = 'rgba(53,197,109,0.15)';
       existingOverall.data.datasets[1].label = 'Degraded';
-      existingOverall.data.datasets[1].data = degraded;
+      existingOverall.data.datasets[1].data = actualDegraded;
       existingOverall.data.datasets[1].borderColor = '#c00000';
       existingOverall.data.datasets[1].backgroundColor = 'rgba(192,0,0,0.15)';
       existingOverall.data.datasets[2].label = 'Net Movement';
-      existingOverall.data.datasets[2].data = net;
+      existingOverall.data.datasets[2].data = actualNet;
       existingOverall.data.datasets[2].borderColor = '#00bceb';
       existingOverall.data.datasets[2].backgroundColor = 'rgba(0,188,235,0.15)';
+      if (hasProjection) {
+        if (!existingOverall.data.datasets[3]) {
+          existingOverall.data.datasets.push({
+            label: 'Projected net',
+            yAxisID: 'yNet',
+            borderColor: '#f1c40f',
+            backgroundColor: 'rgba(241,196,15,0.15)',
+            pointBackgroundColor: '#f1c40f',
+            pointRadius: 3,
+            borderDash: [2, 4],
+            tension: 0.15,
+            fill: false
+          });
+        }
+        existingOverall.data.datasets[3].data = projectedNetData;
+      } else if (existingOverall.data.datasets[3]) {
+        existingOverall.data.datasets.splice(3, 1);
+      }
+      if (existingOverall.options?.scales?.yNet) {
+        existingOverall.options.scales.yNet.min = netMin;
+        existingOverall.options.scales.yNet.max = netMax;
+        existingOverall.options.scales.x.title = chartAxisTitle(`Current assessment date (baseline ${baseline})`);
+        existingOverall.options.scales.x.ticks = chartTickOptions();
+        existingOverall.options.scales.x.grid = { color: chartVerticalGridColor };
+        existingOverall.options.scales.y.title = chartAxisTitle('Application count');
+        existingOverall.options.scales.y.ticks = chartTickOptions();
+        existingOverall.options.scales.y.grid = {
+          color: (ctx) => ctx.tick?.value === 0 ? chartZeroGridColor : chartGridColor,
+          lineWidth: (ctx) => ctx.tick?.value === 0 ? 1.4 : 1
+        };
+        existingOverall.options.scales.yNet.title = chartAxisTitle('Net movement (improved - degraded)');
+        existingOverall.options.scales.yNet.ticks = chartTickOptions();
+        existingOverall.options.scales.yNet.grid = {
+          drawOnChartArea: true,
+          color: (ctx) => ctx.tick?.value === 0 ? chartZeroGridColor : 'rgba(0,188,235,0.06)',
+          borderDash: [3, 5],
+          lineWidth: (ctx) => ctx.tick?.value === 0 ? 1.4 : 1
+        };
+      }
+      if (existingOverall.options?.plugins?.legend?.labels) {
+        existingOverall.options.plugins.legend.labels.color = chartTextColor;
+      }
       existingOverall.update();
       overallLineChart = existingOverall;
     } else {
@@ -249,11 +347,11 @@ async function loadTrends(domain, controller) {
       overallLineChart = new Chart(overallCanvas, {
         type: 'line',
         data: {
-          labels,
+          labels: chartLabels,
           datasets: [
             {
               label: 'Improved',
-              data: improved,
+              data: actualImproved,
               borderColor: '#35c56d',
               backgroundColor: 'rgba(53,197,109,0.15)',
               pointBackgroundColor: '#35c56d',
@@ -263,7 +361,7 @@ async function loadTrends(domain, controller) {
             },
             {
               label: 'Degraded',
-              data: degraded,
+              data: actualDegraded,
               borderColor: '#c00000',
               backgroundColor: 'rgba(192,0,0,0.15)',
               pointBackgroundColor: '#c00000',
@@ -273,7 +371,7 @@ async function loadTrends(domain, controller) {
             },
             {
               label: 'Net Movement',
-              data: net,
+              data: actualNet,
               yAxisID: 'yNet',
               borderColor: '#00bceb',
               backgroundColor: 'rgba(0,188,235,0.15)',
@@ -282,7 +380,19 @@ async function loadTrends(domain, controller) {
               borderDash: [6, 4],
               tension: 0.25,
               fill: false
-            }
+            },
+            ...(hasProjection ? [{
+              label: 'Projected net',
+              data: projectedNetData,
+              yAxisID: 'yNet',
+              borderColor: '#f1c40f',
+              backgroundColor: 'rgba(241,196,15,0.15)',
+              pointBackgroundColor: '#f1c40f',
+              pointRadius: 3,
+              borderDash: [2, 4],
+              tension: 0.15,
+              fill: false
+            }] : [])
           ]
         },
         options: {
@@ -290,21 +400,41 @@ async function loadTrends(domain, controller) {
           maintainAspectRatio: false, // fill wrapper height
           interaction: { mode: 'index', intersect: false },
           plugins: {
-            legend: { position: 'bottom' },
+            legend: { position: 'bottom', labels: { color: chartTextColor } },
             tooltip: {
               callbacks: {
-                title: (items) => fullLabels[items[0]?.dataIndex] || '',
+                title: (items) => chartFullLabels[items[0]?.dataIndex] || '',
                 label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}`
               }
             }
           },
           scales: {
-            x: { title: { display: true, text: `Current assessment date (baseline ${baseline})` } },
-            y: { beginAtZero: true, title: { display: true, text: 'Application count' } },
+            x: {
+              title: chartAxisTitle(`Current assessment date (baseline ${baseline})`),
+              ticks: chartTickOptions(),
+              grid: { color: chartVerticalGridColor }
+            },
+            y: {
+              beginAtZero: true,
+              title: chartAxisTitle('Application count'),
+              ticks: chartTickOptions(),
+              grid: {
+                color: (ctx) => ctx.tick?.value === 0 ? chartZeroGridColor : chartGridColor,
+                lineWidth: (ctx) => ctx.tick?.value === 0 ? 1.4 : 1
+              }
+            },
             yNet: {
               position: 'right',
-              grid: { drawOnChartArea: false },
-              title: { display: true, text: 'Net movement' }
+              min: netMin,
+              max: netMax,
+              title: chartAxisTitle('Net movement (improved - degraded)'),
+              ticks: chartTickOptions(),
+              grid: {
+                drawOnChartArea: true,
+                color: (ctx) => ctx.tick?.value === 0 ? chartZeroGridColor : 'rgba(0,188,235,0.06)',
+                borderDash: [3, 5],
+                lineWidth: (ctx) => ctx.tick?.value === 0 ? 1.4 : 1
+              }
             }
           }
         }
@@ -317,6 +447,7 @@ async function loadTrends(domain, controller) {
 
 // Expose for insights.html to call.
 window.loadTrends = loadTrends;
+window.getOverallTrendChart = () => overallLineChart;
 
 // Optional cleanup on page unload.
 window.addEventListener('beforeunload', () => {

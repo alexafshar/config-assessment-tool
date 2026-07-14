@@ -47,6 +47,7 @@
     .chartbox canvas { display:block; width:100%; height:100%; background:transparent; }
     .chartbox-small { height:220px; position:relative; }
     .chartbox-small canvas { display:block; width:100%; height:100%; background:transparent; }
+    .print-chart-img { display:none; }
 
     /* Context menu used to delete snapshots */
     .contextmenu {
@@ -88,18 +89,18 @@
     .btn:hover { background: rgba(255,255,255,0.06); }
 
     @media print {
-      @page { margin:0.35in; }
+      @page { size: letter; margin:0.32in; }
       * { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
-      body { background:#f6f8fb !important; color:#17202a !important; }
+      html, body { background:#fff !important; color:#17202a !important; }
       .wrap { max-width:none; margin:0; padding:0; }
       .no-print { display: none !important; }
       .print-only { display:block !important; }
       a { color: #000 !important; text-decoration: none !important; }
       h1 { display:none; }
-      h2 { font-size:16px; color:#101820; margin-bottom:5px; }
+      h2 { font-size:15px; color:#101820; margin-bottom:5px; }
       .report-header {
-        margin:0 0 12px;
-        padding:16px 18px;
+        margin:0 0 10px;
+        padding:14px 16px;
         color:#fff;
         background:linear-gradient(135deg,#111827 0%,#12324a 55%,#0f5132 100%);
         border:1px solid #24364a;
@@ -119,14 +120,14 @@
       .print-meta {
         display:grid !important;
         grid-template-columns:repeat(4,minmax(0,1fr));
-        gap:8px;
-        margin:0 0 12px;
+        gap:7px;
+        margin:0 0 10px;
       }
       .print-meta-item {
         background:#fff;
         border:1px solid #d5dde6;
         border-radius:10px;
-        padding:9px 10px;
+        padding:8px 9px;
       }
       .print-meta-label {
         color:#526173;
@@ -137,28 +138,44 @@
       .print-meta-value {
         margin-top:3px;
         color:#111827;
-        font-size:11px;
+        font-size:10px;
         font-weight:700;
         overflow-wrap:anywhere;
       }
-      .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px !important; }
+      .row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px !important; }
       .card {
         background:#fff !important;
         border:1px solid #d5dde6 !important;
         border-radius:14px;
         box-shadow:none;
-        padding:13px;
+        padding:11px;
         min-width:0;
         break-inside:avoid;
+        overflow:hidden;
       }
       #controlsCard { display:none !important; }
       #metricsCard { grid-column:1 / -1; }
       #trendsRow, #appTimelineRow { display:block !important; }
       .caption { color:#526173; font-size:11px; }
       .small { color:#526173; font-size:10px; }
-      .chartbox { height:330px; }
-      .chartbox-small { height:230px; }
+      .chartbox { height:300px; overflow:hidden; }
+      .trendbox { height:210px !important; }
+      .chartbox-small { height:205px; overflow:hidden; }
       canvas { max-width: 100% !important; }
+      body.print-ready canvas { display:none !important; }
+      body.print-ready .print-chart-img {
+        display:block !important;
+        width:100%;
+        height:auto;
+        object-fit:contain;
+      }
+      body.print-ready .chartbox,
+      body.print-ready .trendbox,
+      body.print-ready .chartbox-small {
+        height:auto !important;
+        min-height:0 !important;
+        overflow:visible !important;
+      }
       th {
         color:#17202a !important;
         background:#eef3f8;
@@ -172,6 +189,9 @@
       #metricsTable { page-break-inside:auto; }
       #metricsTable tr { break-inside:avoid; }
       .badge { font-size:10px; padding:3px 6px; }
+      #metricsCard { page-break-after:avoid; }
+      #trendsRow { page-break-before:auto; }
+      #metricsCard + .row .card { break-inside:avoid; }
     }
   </style>
 </head>
@@ -181,7 +201,7 @@
       <a class="home-link no-print" href="/">← Home</a>
       <div class="no-print" style="display:flex; gap:8px; align-items:center;">
         <a id="portfolioLink" class="home-link" href="/portfolio">Portfolio View</a>
-        <button class="btn" type="button" onclick="window.print()">Export PDF</button>
+        <button class="btn" type="button" onclick="exportInsightsPdf()">Export PDF</button>
       </div>
     </div>
 
@@ -378,6 +398,7 @@
     let historyItems = [];
     let historyHiddenDuplicates = 0;
     let allAppItems = [];
+    let printModeActive = false;
 
     function appItemName(item) {
       return typeof item === 'string' ? item : item.name;
@@ -431,6 +452,91 @@
       const values = items.map(appItemName);
       appSel.value = values.includes(preferredValue) ? preferredValue : values[0];
       return true;
+    }
+
+    function applyChartPrintMode(enabled) {
+      printModeActive = Boolean(enabled);
+      const text = enabled ? '#17202a' : '#e8eef7';
+      const muted = enabled ? '#334155' : '#b8c7d8';
+      const grid = enabled ? 'rgba(15,23,42,0.13)' : 'rgba(232,238,247,0.12)';
+      const zero = enabled ? 'rgba(15,23,42,0.36)' : 'rgba(232,238,247,0.26)';
+      const vertical = enabled ? 'rgba(15,23,42,0.08)' : 'rgba(232,238,247,0.05)';
+
+      function tuneChart(chart) {
+        if (!chart?.options) return;
+        const canvas = chart.canvas;
+        const box = canvas?.parentElement;
+        const rect = box?.getBoundingClientRect();
+        if (rect?.width && rect?.height) {
+          canvas.style.width = '100%';
+          canvas.style.height = '100%';
+          canvas.width = Math.max(200, Math.round(rect.width));
+          canvas.height = Math.max(140, Math.round(rect.height));
+          chart.resize(canvas.width, canvas.height);
+        }
+        const scales = chart.options.scales || {};
+        Object.values(scales).forEach(scale => {
+          if (!scale) return;
+          if (scale.ticks) scale.ticks.color = muted;
+          if (scale.title) scale.title.color = text;
+          if (scale.grid) {
+            scale.grid.color = (ctx) => ctx.tick?.value === 0 ? zero : grid;
+            scale.grid.lineWidth = (ctx) => ctx.tick?.value === 0 ? 1.25 : 1;
+          }
+        });
+        if (scales.x?.grid) scales.x.grid.color = vertical;
+        if (scales.yNet?.grid) {
+          scales.yNet.grid.drawOnChartArea = true;
+          scales.yNet.grid.color = (ctx) => ctx.tick?.value === 0 ? zero : 'rgba(0,122,153,0.11)';
+        }
+        if (chart.options.plugins?.legend?.labels) {
+          chart.options.plugins.legend.labels.color = text;
+          chart.options.plugins.legend.labels.font = { size: enabled ? 10 : 11 };
+        }
+        chart.update('none');
+        chart.resize();
+      }
+
+      [metricsChart, overallGaugeChart, countsBarChart, appTimelineChart].forEach(tuneChart);
+      const overall = window.getOverallTrendChart ? window.getOverallTrendChart() : null;
+      tuneChart(overall);
+    }
+
+    function chartInstancesForPrint() {
+      const charts = [metricsChart, overallGaugeChart, countsBarChart, appTimelineChart];
+      const overall = window.getOverallTrendChart ? window.getOverallTrendChart() : null;
+      if (overall) charts.push(overall);
+      return charts.filter(Boolean);
+    }
+
+    async function prepareChartsForPrint() {
+      applyChartPrintMode(true);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+      chartInstancesForPrint().forEach(chart => {
+        if (!chart?.canvas) return;
+        chart.update('none');
+        const src = chart.canvas.toDataURL('image/png', 1);
+        let img = chart.canvas.parentElement?.querySelector(':scope > .print-chart-img');
+        if (!img) {
+          img = document.createElement('img');
+          img.className = 'print-chart-img';
+          img.alt = chart.canvas.getAttribute('aria-label') || 'Chart';
+          chart.canvas.parentElement?.appendChild(img);
+        }
+        img.src = src;
+      });
+      document.body.classList.add('print-ready');
+    }
+
+    function cleanupChartsAfterPrint() {
+      document.body.classList.remove('print-ready');
+      applyChartPrintMode(false);
+    }
+
+    async function exportInsightsPdf() {
+      await prepareChartsForPrint();
+      window.setTimeout(() => window.print(), 120);
     }
 
     function changeType(text) {
@@ -671,7 +777,10 @@
       const printCmp = currentCompareLabel(true);
       const generated = currentGeneratedLabel();
       if (portfolioLink) {
-        portfolioLink.href = `/portfolio?domain=${encodeURIComponent(domainSel.value)}`;
+        const p = new URLSearchParams({ domain: domainSel.value });
+        if (snapshotSel.value !== 'LATEST') p.append('file', snapshotSel.value);
+        else if (controllerFilter.value) p.append('controller', controllerFilter.value);
+        portfolioLink.href = `/portfolio?${p.toString()}`;
       }
       if (printDomainEl) printDomainEl.textContent = domainSel.value || '-';
       if (printControllerEl) printControllerEl.textContent = controller || '-';
@@ -686,7 +795,8 @@
       improvementCaptionEl.textContent = `Areas with the highest number of improved metrics for ${app} — ${cmp}.`;
 
       // Trends
-      overallLineCaptionEl.textContent   = `Improved and degraded application counts plus net movement using the earliest previous workbook as the fixed baseline for controller ${controller}.`;
+      const baseline = currentSnapshotItem()?.previousDate || currentSnapshotItem()?.prev || 'earliest previous workbook';
+      overallLineCaptionEl.textContent   = `Baseline: ${baseline}. Each point compares this same baseline against that assessment date for controller ${controller}. Dashed projection appears when at least three trend points are available.`;
       appTimelineCaptionEl.textContent    = `Area-level upgrade and downgrade counts for ${app}, using the earliest previous workbook as the fixed baseline for controller ${controller}.`;
 
       // Fallback KPIs
@@ -927,6 +1037,14 @@
           existing.data.datasets[0].data = upgraded;
           existing.data.datasets[1].data = downgraded;
           existing.data.datasets[2].data = unchanged;
+          existing.options.plugins.legend.labels.color = '#e8eef7';
+          existing.options.scales.x.ticks.color = '#b8c7d8';
+          existing.options.scales.x.title.color = '#e8eef7';
+          existing.options.scales.x.grid.color = 'rgba(232,238,247,0.05)';
+          existing.options.scales.y.ticks.color = '#b8c7d8';
+          existing.options.scales.y.title.color = '#e8eef7';
+          existing.options.scales.y.grid.color = (ctx) => ctx.tick?.value === 0 ? 'rgba(232,238,247,0.26)' : 'rgba(232,238,247,0.12)';
+          existing.options.scales.y.grid.lineWidth = (ctx) => ctx.tick?.value === 0 ? 1.4 : 1;
           existing.update();
           appTimelineChart = existing;
         } else {
@@ -973,11 +1091,23 @@
               maintainAspectRatio: false,
               interaction: { mode: 'index', intersect: false },
               scales: {
-                x: { ticks: { maxRotation: 20 }, title: { display: true, text: 'Current assessment date' } },
-                y: { beginAtZero: true, title: { display: true, text: 'Area count' } }
+                x: {
+                  ticks: { maxRotation: 20, color: '#b8c7d8', font: { size: 11 } },
+                  title: { display: true, text: 'Current assessment date', color: '#e8eef7', font: { size: 12, weight: '600' } },
+                  grid: { color: 'rgba(232,238,247,0.05)' }
+                },
+                y: {
+                  beginAtZero: true,
+                  ticks: { color: '#b8c7d8', font: { size: 11 } },
+                  title: { display: true, text: 'Area count', color: '#e8eef7', font: { size: 12, weight: '600' } },
+                  grid: {
+                    color: (ctx) => ctx.tick?.value === 0 ? 'rgba(232,238,247,0.26)' : 'rgba(232,238,247,0.12)',
+                    lineWidth: (ctx) => ctx.tick?.value === 0 ? 1.4 : 1
+                  }
+                }
               },
               plugins: {
-                legend: { position: 'bottom' },
+                legend: { position: 'bottom', labels: { color: '#e8eef7' } },
                 tooltip: {
                   callbacks: {
                     title: (points) => fullLabels[points[0]?.dataIndex] || ''
@@ -1046,15 +1176,36 @@
         updateCaptions();
       }
     });
+    window.addEventListener('beforeprint', () => {
+      if (!document.body.classList.contains('print-ready')) {
+        prepareChartsForPrint();
+      }
+    });
+    window.addEventListener('afterprint', cleanupChartsAfterPrint);
 
     (async function init() {
       const params = new URLSearchParams(window.location.search);
       const qpDomain = (params.get('domain') || '').toUpperCase();
+      const qpFile = params.get('file') || '';
+      const qpController = params.get('controller') || '';
+      const qpApp = params.get('app') || '';
       if (qpDomain && ['APM','BRUM','MRUM'].includes(qpDomain)) {
         domainSel.value = qpDomain;
       }
       await loadHistory();
+      if (qpController && Array.from(controllerFilter.options).some(opt => opt.value === qpController)) {
+        controllerFilter.value = qpController;
+        renderSnapshotOptions(qpFile || snapshotSel.value || 'LATEST');
+      }
+      if (qpFile && Array.from(snapshotSel.options).some(opt => opt.value === qpFile)) {
+        snapshotSel.value = qpFile;
+        updateSnapshotInfo();
+      }
       await loadApps();
+      if (qpApp && Array.from(appSel.options).some(opt => opt.value === qpApp)) {
+        appSel.value = qpApp;
+        await loadInsights();
+      }
       triggerTrendsRefresh();
       updateCaptions();
     })();

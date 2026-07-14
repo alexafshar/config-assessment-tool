@@ -35,6 +35,7 @@ from compare_tool.service import (
     run_comparison_brum,   # BRUM
     run_comparison_mrum,   # MRUM
     find_best_matching_files,  # Folder processing
+    folder_match_debug_summary,
     save_matched_files,        # Folder processing
 )
 import logging
@@ -760,6 +761,8 @@ def upload_folders():
     
     # Find matching files for each data type
     matches = find_best_matching_files(previous_files, current_files)
+    match_debug = folder_match_debug_summary(matches)
+    logging.info("[FOLDERS] Match decisions: %s", match_debug)
     
     # Process each selected data type
     results = {}
@@ -774,7 +777,14 @@ def upload_folders():
             previous_path, current_path = save_matched_files(matches, UPLOAD_FOLDER, data_type)
             
             if not previous_path or not current_path:
-                errors.append(f"No matching {domain} files found in the selected folders.")
+                details = match_debug.get(data_type, {})
+                prev_name = details.get("previous") or "not found"
+                curr_name = details.get("current") or "not found"
+                errors.append(
+                    f"No matching {domain} file pair found. "
+                    f"Previous: {prev_name}. Current: {curr_name}. "
+                    "The file name or workbook Analysis componentType/sheet names must identify the domain."
+                )
                 continue
             
             output_file, ppt_file = run_domain_comparison(data_type, previous_path, current_path)
@@ -1330,12 +1340,19 @@ def api_portfolio():
         upgraded = 0
         downgraded = 0
         unchanged = 0
+        upgraded_entities = []
+        downgraded_entities = []
         for area in entry.get("areas") or []:
+            area_name = str(area.get("name") or "").strip()
             status = str(area.get("status") or "").lower()
             if status == "upgraded":
                 upgraded += 1
+                if area_name:
+                    upgraded_entities.append(area_name)
             elif status == "downgraded":
                 downgraded += 1
+                if area_name:
+                    downgraded_entities.append(area_name)
             else:
                 unchanged += 1
 
@@ -1361,6 +1378,8 @@ def api_portfolio():
                 "downgraded": downgraded,
                 "unchanged": unchanged,
                 "changed": upgraded + downgraded,
+                "upgradedEntities": upgraded_entities,
+                "downgradedEntities": downgraded_entities,
             }
         )
 
