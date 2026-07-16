@@ -15,10 +15,18 @@ Key Functions:
 
 import os
 import logging
+from io import BytesIO
 from typing import Dict, Tuple, Optional, Any, List
 from pathlib import Path
 
-from .excel_io import save_workbook, check_controllers_match
+from openpyxl import load_workbook
+
+from .excel_io import (
+    inspect_summary_formula_cache,
+    summary_missing_cache_is_supported,
+    save_workbook,
+    check_controllers_match,
+)
 from .summary import (
     create_summary_workbooks,
     compare_files_summary,
@@ -37,6 +45,11 @@ logger = logging.getLogger(__name__)
 
 # Base directory of the project (points at compare-plugin root)
 BASE_DIR = Path(__file__).resolve().parent.parent
+LAST_EXCEL_RECALCULATION_STATUS: Dict[str, str] = {}
+
+
+def get_excel_recalculation_status(domain: str) -> str:
+    return LAST_EXCEL_RECALCULATION_STATUS.get((domain or "").upper(), "")
 
 
 def _resolve_template_path(config: Dict, domain_key: str, default_name: str) -> Optional[str]:
@@ -66,6 +79,94 @@ def _resolve_template_path(config: Dict, domain_key: str, default_name: str) -> 
 
     logger.warning("Template not found at %s", template_path)
     return None
+
+
+def _prepare_summary_formula_values(
+    previous_file_path: str,
+    current_file_path: str,
+    config: Dict,
+    domain: str,
+) -> None:
+    """
+    Ensure Summary formulas can be read as values.
+
+    Modes:
+      - always: current behavior; open and save both workbooks with Excel.
+      - auto: skip Excel when Summary formula cached values already exist.
+      - never: never use Excel; useful for proving no-Excel behavior.
+    """
+    mode = str(config.get("excel_recalculation_mode", "always")).strip().lower()
+    status = ""
+    if mode not in {"always", "auto", "never"}:
+        logger.warning(
+            "[%s] Unknown excel_recalculation_mode=%r; using 'always'.",
+            domain,
+            mode,
+        )
+        mode = "always"
+
+    if mode == "always":
+        logger.info("[%s] Recalculating workbooks with Excel (mode=always).", domain)
+        save_workbook(previous_file_path)
+        save_workbook(current_file_path)
+        status = "Excel recalculation used before comparison."
+        LAST_EXCEL_RECALCULATION_STATUS[domain.upper()] = status
+        return
+
+    diagnostics = [
+        inspect_summary_formula_cache(previous_file_path),
+        inspect_summary_formula_cache(current_file_path),
+    ]
+    missing = [
+        d for d in diagnostics
+        if not d["summary_exists"] or int(d["missing_cached_formula_cells"]) > 0
+    ]
+
+    for d in diagnostics:
+        logger.info(
+            "[%s] Summary cache check: path=%s formulas=%s missing_cached=%s sample_missing=%s",
+            domain,
+            d["path"],
+            d["formula_cells"],
+            d["missing_cached_formula_cells"],
+            list(d["missing_cached_coordinates"])[:10],
+        )
+
+    if not missing:
+        logger.info("[%s] Summary cached values available; skipping Excel automation.", domain)
+        status = "Excel recalculation skipped; Summary cached values were available."
+        LAST_EXCEL_RECALCULATION_STATUS[domain.upper()] = status
+        return
+
+    if all(summary_missing_cache_is_supported(str(d["path"])) for d in missing):
+        logger.info(
+            "[%s] Missing Summary cached values use supported formulas; "
+            "skipping Excel and calculating Summary values in Python.",
+            domain,
+        )
+        status = "Excel recalculation skipped; Summary values were calculated locally."
+        LAST_EXCEL_RECALCULATION_STATUS[domain.upper()] = status
+        return
+
+    if mode == "never":
+        logger.warning(
+            "[%s] Summary cached values are missing, but Excel recalculation is disabled.",
+            domain,
+        )
+        status = (
+            "Excel recalculation disabled; missing Summary cached values were not refreshed."
+        )
+        LAST_EXCEL_RECALCULATION_STATUS[domain.upper()] = status
+        return
+
+    logger.info(
+        "[%s] Summary cached values missing; falling back to Excel recalculation.",
+        domain,
+    )
+    save_workbook(previous_file_path)
+    save_workbook(current_file_path)
+    status = "Excel recalculation used because unsupported Summary cached values were missing."
+    LAST_EXCEL_RECALCULATION_STATUS[domain.upper()] = status
 
 
 # ---------------------------------------------------------------------------
@@ -107,9 +208,8 @@ def run_comparison(
 
     powerpoint_output_path = os.path.join(result_folder, "Analysis_Summary_APM.pptx")
 
-    # 1. Recalculate formulas in both input workbooks
-    save_workbook(previous_file_path)
-    save_workbook(current_file_path)
+    # 1. Ensure formulas in Summary can be read as values.
+    _prepare_summary_formula_values(previous_file_path, current_file_path, config, "APM")
 
     # 2. Check controllers
     if not check_controllers_match(previous_file_path, current_file_path):
@@ -192,9 +292,8 @@ def run_comparison_brum(
     comparison_sum_path = os.path.join(result_folder, comparison_sum_name)
     powerpoint_output_path = os.path.join(result_folder, "Analysis_Summary_BRUM.pptx")
 
-    # 1. Recalculate formulas
-    save_workbook(previous_file_path)
-    save_workbook(current_file_path)
+    # 1. Ensure formulas in Summary can be read as values.
+    _prepare_summary_formula_values(previous_file_path, current_file_path, config, "BRUM")
 
     # 2. Controllers must match
     if not check_controllers_match(previous_file_path, current_file_path):
@@ -277,9 +376,8 @@ def run_comparison_mrum(
     comparison_sum_path = os.path.join(result_folder, comparison_sum_name)
     powerpoint_output_path = os.path.join(result_folder, "Analysis_Summary_MRUM.pptx")
 
-    # 1. Recalculate formulas
-    save_workbook(previous_file_path)
-    save_workbook(current_file_path)
+    # 1. Ensure formulas in Summary can be read as values.
+    _prepare_summary_formula_values(previous_file_path, current_file_path, config, "MRUM")
 
     # 2. Controllers must match
     if not check_controllers_match(previous_file_path, current_file_path):
@@ -339,6 +437,10 @@ def _norm_name(name: str) -> str:
     return "".join(ch.lower() for ch in (name or "") if ch.isalnum())
 
 
+def _is_raw_candidate(filename: str) -> bool:
+    return "raw" in _norm_name(filename)
+
+
 def _domain_score(filename: str, domain: str) -> int:
     """
     Score how likely `filename` belongs to `domain` (apm/brum/mrum).
@@ -347,11 +449,20 @@ def _domain_score(filename: str, domain: str) -> int:
     n = _norm_name(filename)
     d = _norm_name(domain)
 
+    if _is_raw_candidate(filename):
+        return -1
+
     score = 0
 
     # strong signal
     if d in n:
         score += 100
+    else:
+        return -1
+
+    # CAT comparison-ready exports should include MaturityAssessment.
+    if "maturityassessment" in n:
+        score += 150
 
     # helpful keywords (tweak if your exports use different naming)
     if domain == "apm":
@@ -374,13 +485,115 @@ def _domain_score(filename: str, domain: str) -> int:
     return score
 
 
+def _cell_text(value: object) -> str:
+    return str(value or "").strip()
+
+
+def _norm_cell(value: object) -> str:
+    return _cell_text(value).lstrip("\ufeff").lower()
+
+
+def _workbook_domain(file_obj: Any) -> Optional[str]:
+    cached = getattr(file_obj, "_cat_workbook_domain", None)
+    if cached is not None:
+        return cached
+
+    filename = getattr(file_obj, "filename", "")
+    if not filename or _is_raw_candidate(filename):
+        return None
+
+    stream = getattr(file_obj, "stream", None)
+    if stream is None:
+        return None
+
+    detected = None
+    try:
+        stream.seek(0)
+        workbook_data = stream.read()
+        workbook = load_workbook(BytesIO(workbook_data), read_only=True, data_only=True)
+        sheet_names = {name.lower(): name for name in workbook.sheetnames}
+        analysis_name = sheet_names.get("analysis")
+        if analysis_name:
+            ws = workbook[analysis_name]
+
+            component_col = None
+            header_row = None
+            for row in ws.iter_rows(min_row=1, max_row=min(ws.max_row or 1, 20)):
+                for cell in row:
+                    if _norm_name(_cell_text(cell.value)) == "componenttype":
+                        component_col = cell.column
+                        header_row = cell.row
+                        break
+                if component_col:
+                    break
+
+            if component_col and header_row:
+                values = []
+                for row in ws.iter_rows(
+                    min_row=header_row + 1,
+                    max_row=min(ws.max_row or header_row + 1, header_row + 100),
+                    min_col=component_col,
+                    max_col=component_col,
+                    values_only=True,
+                ):
+                    value = _norm_cell(row[0] if row else "")
+                    if value:
+                        values.append(value)
+                for domain in ("apm", "brum", "mrum"):
+                    if domain in values:
+                        detected = domain
+                        break
+
+        if not detected:
+            joined_sheets = " ".join(name.lower() for name in workbook.sheetnames)
+            for domain in ("apm", "brum", "mrum"):
+                if domain in joined_sheets:
+                    detected = domain
+                    break
+
+        workbook.close()
+    except Exception as exc:
+        logger.debug("Could not inspect workbook domain for %s: %s", filename, exc)
+    finally:
+        try:
+            stream.seek(0)
+        except Exception:
+            pass
+
+    try:
+        setattr(file_obj, "_cat_workbook_domain", detected)
+    except Exception:
+        pass
+    return detected
+
+
+def _candidate_score(file_obj: Any, domain: str) -> int:
+    filename = getattr(file_obj, "filename", "")
+    filename_score = _domain_score(filename, domain)
+    if filename_score >= 0:
+        return filename_score
+
+    workbook_domain = _workbook_domain(file_obj)
+    if workbook_domain == domain:
+        score = 80
+        if "maturityassessment" in _norm_name(filename):
+            score += 50
+        return score
+
+    return -1
+
+
 def _best_candidate(files: List[Any], domain: str) -> Optional[Any]:
-    candidates = [f for f in files if getattr(f, "filename", None)]
+    candidates = [
+        f
+        for f in files
+        if getattr(f, "filename", None) and _candidate_score(f, domain) >= 0
+    ]
     if not candidates:
         return None
 
     candidates.sort(
-        key=lambda f: (_domain_score(f.filename, domain), len(f.filename or "")),
+        key=lambda f: (_candidate_score(f, domain), len(f.filename or "")),
         reverse=True,
     )
     return candidates[0]
@@ -414,6 +627,8 @@ def find_best_matching_files(
             for cf in current_files:
                 if not getattr(cf, "filename", None):
                     continue
+                if _candidate_score(cf, domain) < 0:
+                    continue
                 sim = SequenceMatcher(None, prev_key, _norm_name(cf.filename)).ratio()
                 if sim > best_sim:
                     best_sim = sim
@@ -424,6 +639,19 @@ def find_best_matching_files(
         matches[domain] = (prev_best, curr_best)
 
     return matches
+
+
+def folder_match_debug_summary(
+    matches: Dict[str, Tuple[Optional[Any], Optional[Any]]]
+) -> Dict[str, Dict[str, Optional[str]]]:
+    summary: Dict[str, Dict[str, Optional[str]]] = {}
+    for domain in ("apm", "brum", "mrum"):
+        prev_file, curr_file = matches.get(domain, (None, None))
+        summary[domain] = {
+            "previous": getattr(prev_file, "filename", None) if prev_file else None,
+            "current": getattr(curr_file, "filename", None) if curr_file else None,
+        }
+    return summary
 
 
 def save_matched_files(
@@ -448,8 +676,16 @@ def save_matched_files(
     prev_path = os.path.join(upload_folder, f"previous_{data_type}.xlsx")
     curr_path = os.path.join(upload_folder, f"current_{data_type}.xlsx")
 
+    try:
+        prev_file.stream.seek(0)
+    except Exception:
+        pass
+    try:
+        curr_file.stream.seek(0)
+    except Exception:
+        pass
+
     prev_file.save(prev_path)
     curr_file.save(curr_path)
 
     return prev_path, curr_path
-

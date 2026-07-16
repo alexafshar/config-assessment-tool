@@ -25,6 +25,7 @@ import pandas as pd
 from pptx import Presentation
 from pptx.util import Pt
 from pptx.dml.color import RGBColor
+from compare_tool.summary import read_summary_values_df
 
 log = logging.getLogger(__name__)
 
@@ -111,8 +112,8 @@ def generate_powerpoint_from_brum(
         )
         log.info("[BRUM] Number of applications in the current 'Analysis' sheet: %s", number_of_apps)
 
-        current_summary_df = pd.read_excel(current_file_path, sheet_name="Summary")
-        previous_summary_df = pd.read_excel(previous_file_path, sheet_name="Summary")
+        current_summary_df = read_summary_values_df(current_file_path)
+        previous_summary_df = read_summary_values_df(previous_file_path)
 
         summary_df = pd.read_excel(comparison_result_path, sheet_name="Summary")
         log.debug("[BRUM] Loaded Summary sheet successfully.")

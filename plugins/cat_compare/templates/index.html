@@ -87,7 +87,6 @@
 
         .panel { display: none; padding-top: 18px; }
         .panel.active { display: block; }
-
         .section {
             background: #0c1320;
             border: 1px solid var(--border);
@@ -99,6 +98,21 @@
 
         .field { margin: 12px 0 14px; }
         .label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+        .checks { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+        .check {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--border);
+            background: #0b1120;
+            border-radius: 10px;
+            padding: 8px 10px;
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .check input { accent-color: var(--accent); }
 
         .drop {
             position: relative;
@@ -152,10 +166,83 @@
         .message { margin: 18px 0 0; border: 1px solid rgba(53,197,109,0.35); background: linear-gradient(180deg, rgba(53,197,109,0.15), rgba(53,197,109,0.06)); color: var(--text); padding: 12px 14px; border-radius: 10px; font-size: 14px; }
 
         .note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+        .best-results {
+            margin: 10px 0 16px;
+            padding: 12px 14px;
+            border: 1px solid rgba(0,188,235,0.28);
+            border-radius: 10px;
+            background: rgba(0,188,235,0.06);
+            color: var(--muted);
+            font-size: 12px;
+        }
+        .best-results-title {
+            margin: 0 0 8px;
+            color: var(--text);
+            font-weight: 700;
+        }
+        .best-results ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+        .best-results li {
+            margin: 4px 0;
+        }
+        .structure-examples {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin: -4px 0 16px;
+        }
+        .structure-example {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #0b1120;
+            padding: 12px 14px;
+        }
+        .structure-title {
+            margin: 0 0 8px;
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .folder-tree {
+            margin: 0;
+            color: var(--muted);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 12px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+        }
+        .preview {
+            display: none;
+            margin-top: 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            background: #0b1120;
+        }
+        .preview.active { display: block; }
+        .preview table { width: 100%; border-collapse: collapse; }
+        .preview th, .preview td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            text-align: left;
+            font-size: 12px;
+            vertical-align: top;
+        }
+        .preview th { color: var(--muted); background: rgba(255,255,255,0.04); }
+        .preview tr:last-child td { border-bottom: none; }
+        .preview-warning { color: #ffd27a; font-size: 12px; padding: 8px 10px; border-top: 1px solid rgba(255,255,255,0.08); }
+        .preview-warning ul { margin: 0; padding-left: 18px; }
+        .preview-warning li { margin: 3px 0; }
 
         .footer { text-align: center; margin-top: 22px; color: var(--muted); font-size: 12px; }
         .footer a { color: var(--accent); text-decoration: none; }
         .footer a:hover { text-decoration: underline; }
+        @media (max-width: 760px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .structure-examples { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -171,13 +258,16 @@
         {% endif %}
 
         <div class="tabs" role="tablist" aria-label="Data domains">
-            <button class="tab active" role="tab" aria-selected="true" data-target="apm">APM</button>
-            <button class="tab" role="tab" aria-selected="false" data-target="brum">BRUM</button>
-            <button class="tab" role="tab" aria-selected="false" data-target="mrum">MRUM</button>
+            {% set active = active_tab | default('apm') %}
+            <button class="tab {% if active == 'apm' %}active{% endif %}" role="tab" aria-selected="{{ 'true' if active == 'apm' else 'false' }}" data-target="apm">APM</button>
+            <button class="tab {% if active == 'brum' %}active{% endif %}" role="tab" aria-selected="{{ 'true' if active == 'brum' else 'false' }}" data-target="brum">BRUM</button>
+            <button class="tab {% if active == 'mrum' %}active{% endif %}" role="tab" aria-selected="{{ 'true' if active == 'mrum' else 'false' }}" data-target="mrum">MRUM</button>
+            <button class="tab {% if active == 'folders' %}active{% endif %}" role="tab" aria-selected="{{ 'true' if active == 'folders' else 'false' }}" data-target="folders">Folder Compare</button>
+            <button class="tab {% if active == 'progression' %}active{% endif %}" role="tab" aria-selected="{{ 'true' if active == 'progression' else 'false' }}" data-target="progression">Progression</button>
         </div>
 
         <!-- APM -->
-        <section id="apm" class="panel active" role="tabpanel" aria-labelledby="tab-apm">
+        <section id="apm" class="panel {% if active == 'apm' %}active{% endif %}" role="tabpanel" aria-labelledby="tab-apm" {% if active != 'apm' %}hidden{% endif %}>
             <div class="section">
                 <h2>APM (Application Performance Monitoring)</h2>
                 <form action="/upload" method="post" enctype="multipart/form-data">
@@ -214,7 +304,7 @@
         </section>
 
         <!-- BRUM -->
-        <section id="brum" class="panel" role="tabpanel" aria-labelledby="tab-brum" hidden>
+        <section id="brum" class="panel {% if active == 'brum' %}active{% endif %}" role="tabpanel" aria-labelledby="tab-brum" {% if active != 'brum' %}hidden{% endif %}>
             <div class="section">
                 <h2>BRUM (Browser Real User Monitoring)</h2>
                 <form action="/upload_brum" method="post" enctype="multipart/form-data">
@@ -251,7 +341,7 @@
         </section>
 
         <!-- MRUM -->
-        <section id="mrum" class="panel" role="tabpanel" aria-labelledby="tab-mrum" hidden>
+        <section id="mrum" class="panel {% if active == 'mrum' %}active{% endif %}" role="tabpanel" aria-labelledby="tab-mrum" {% if active != 'mrum' %}hidden{% endif %}>
             <div class="section">
                 <h2>MRUM (Mobile Real User Monitoring)</h2>
                 <form action="/upload_mrum" method="post" enctype="multipart/form-data">
@@ -287,12 +377,151 @@
             </div>
         </section>
 
+        <!-- Folder Compare -->
+        <section id="folders" class="panel {% if active == 'folders' %}active{% endif %}" role="tabpanel" aria-labelledby="tab-folders" {% if active != 'folders' %}hidden{% endif %}>
+            <div class="section">
+                <h2>Folder Compare (Previous vs Current)</h2>
+                <div class="best-results">
+                    <p class="best-results-title">Use this when</p>
+                    <ul>
+                        <li>You want one comparison between a previous assessment folder and a current assessment folder.</li>
+                        <li>Each folder contains the matching APM, BRUM, and/or MRUM MaturityAssessment workbooks.</li>
+                        <li>You already know which two assessment points should be compared.</li>
+                    </ul>
+                </div>
+                <form action="/upload_folders" method="post" enctype="multipart/form-data">
+                    <div class="grid-2">
+                        <div class="field">
+                            <label class="label" for="previous_folder">Previous Assessment Folder</label>
+                            <div class="drop" data-drop="previous_folder">
+                                <div>
+                                    <div class="file-label">Browse to select the previous folder.</div>
+                                    <div class="file-name" id="previous_folder_name">No folder selected.</div>
+                                </div>
+                                <button class="browse-btn" type="button" data-browse="previous_folder">Browse</button>
+                                <input type="file" id="previous_folder" name="previous_folder" webkitdirectory directory multiple required />
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="label" for="current_folder">Current Assessment Folder</label>
+                            <div class="drop" data-drop="current_folder">
+                                <div>
+                                    <div class="file-label">Browse to select the current folder.</div>
+                                    <div class="file-name" id="current_folder_name">No folder selected.</div>
+                                </div>
+                                <button class="browse-btn" type="button" data-browse="current_folder">Browse</button>
+                                <input type="file" id="current_folder" name="current_folder" webkitdirectory directory multiple required />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <span class="label">Domains to compare</span>
+                        <div class="checks">
+                            <label class="check"><input type="checkbox" name="data_types" value="apm" checked /> APM</label>
+                            <label class="check"><input type="checkbox" name="data_types" value="brum" checked /> BRUM</label>
+                            <label class="check"><input type="checkbox" name="data_types" value="mrum" checked /> MRUM</label>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn" type="submit">Compare Selected Folders</button>
+                    </div>
+                    <div class="note">The matcher picks APM, BRUM, and MRUM MaturityAssessment workbooks and ignores files with raw in the filename.</div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Progression Compare -->
+        <section id="progression" class="panel {% if active == 'progression' %}active{% endif %}" role="tabpanel" aria-labelledby="tab-progression" {% if active != 'progression' %}hidden{% endif %}>
+            <div class="section">
+                <h2>Progression Compare (Fixed Baseline)</h2>
+                <form action="/upload_progression_folders" method="post" enctype="multipart/form-data">
+                    <div class="best-results">
+                        <p class="best-results-title">Use this when</p>
+                        <ul>
+                            <li>Best when you have two or more assessments, and you want to see trends for your AppDynamics configuration maturity.</li>
+                            <li>The tool will compare the selected baseline against each later selected assessment.</li>
+                            <li>Use one controller per progression run.</li>
+                            <li>Folder and file names below are examples; workbook filenames must include MaturityAssessment plus apm, brum, or mrum.</li>
+                            <li>If files are scattered, copy the non-raw APM, BRUM, and MRUM MaturityAssessment workbooks into one clean staging folder first.</li>
+                            <li>Group dated assessments in child folders, or keep dated workbook files directly in the selected folder.</li>
+                            <li>If nested-folder guidance appears, browse one level deeper and select the folder containing the assessment folders or workbooks.</li>
+                            <li>Select the earliest assessment as the baseline, then tick the later assessments to compare against it.</li>
+                        </ul>
+                    </div>
+                    <div class="structure-examples" aria-label="Progression folder setup examples">
+                        <div class="structure-example">
+                            <p class="structure-title">Recommended: dated assessment folders</p>
+                            <pre class="folder-tree">Client-Progression/
+  2025-01-08/
+    client-MaturityAssessment-apm.xlsx
+    client-MaturityAssessment-brum.xlsx
+    client-MaturityAssessment-mrum.xlsx
+  2025-03-28/
+    client-MaturityAssessment-apm.xlsx
+    client-MaturityAssessment-brum.xlsx
+    client-MaturityAssessment-mrum.xlsx
+  2025-05-12/
+    client-MaturityAssessment-apm.xlsx
+    client-MaturityAssessment-brum.xlsx
+    client-MaturityAssessment-mrum.xlsx</pre>
+                        </div>
+                        <div class="structure-example">
+                            <p class="structure-title">Also works: dated files in one folder</p>
+                            <pre class="folder-tree">Client-Progression/
+  client-MaturityAssessment-apm-Jan25.xlsx
+  client-MaturityAssessment-brum-Jan25.xlsx
+  client-MaturityAssessment-mrum-Jan25.xlsx
+  client-MaturityAssessment-apm-Mar25.xlsx
+  client-MaturityAssessment-brum-Mar25.xlsx
+  client-MaturityAssessment-mrum-Mar25.xlsx
+  client-MaturityAssessment-apm-May25.xlsx
+  client-MaturityAssessment-brum-May25.xlsx
+  client-MaturityAssessment-mrum-May25.xlsx</pre>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label" for="progression_folder">Parent Folder Containing Assessment Folders</label>
+                        <div class="drop" data-drop="progression_folder">
+                            <div>
+                                <div class="file-label">Browse to select one parent folder containing dated assessment folders.</div>
+                                <div class="file-name" id="progression_folder_name">No folder selected.</div>
+                            </div>
+                            <button class="browse-btn" type="button" data-browse="progression_folder">Browse</button>
+                            <input type="file" id="progression_folder" name="progression_folder" webkitdirectory directory multiple required />
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <span class="label">Domains to compare</span>
+                        <div class="checks">
+                            <label class="check"><input type="checkbox" name="progression_data_types" value="apm" checked /> APM</label>
+                            <label class="check"><input type="checkbox" name="progression_data_types" value="brum" checked /> BRUM</label>
+                            <label class="check"><input type="checkbox" name="progression_data_types" value="mrum" checked /> MRUM</label>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn secondary" type="submit">Build Fixed-Baseline Progression</button>
+                    </div>
+                    <input type="hidden" id="progression_baseline_group" name="progression_baseline_group" value="" />
+                    <input type="hidden" id="progression_selected_groups" name="progression_selected_groups" value="" />
+                    <div class="note">Select the earliest assessment as the baseline, then choose the later assessments to compare against it. Dates and controller names are read from the uploaded workbooks where possible; folder and filename dates are only fallbacks.</div>
+                    <div id="progressionPreview" class="preview" aria-live="polite"></div>
+                </form>
+            </div>
+        </section>
+
         <div class="footer">
             Need help? Open an issue or contact your administrator. Built for local use; no files leave your machine.
         </div>
         <div>
           <p style="text-align:center;margin-top:12px;">
             <a id="openInsightsLink" href="/insights" style="color:#00bceb;">Open Insights</a>
+            <span style="color:#9fb3c8;margin:0 8px;">|</span>
+            <a id="openPortfolioLink" href="/portfolio" style="color:#00bceb;">Portfolio View</a>
           </p>
         </div>
     </div>
@@ -303,11 +532,14 @@
     const tabs = document.querySelectorAll('.tab');
     const panels = document.querySelectorAll('.panel');
     const insightsLink = document.getElementById('openInsightsLink');
+    const portfolioLink = document.getElementById('openPortfolioLink');
 
     function updateInsightsHref() {
         const active = document.querySelector('.tab.active');
-        const domain = active ? active.dataset.target.toUpperCase() : 'APM';
+        const target = active?.dataset.target || 'apm';
+        const domain = ['apm', 'brum', 'mrum'].includes(target) ? target.toUpperCase() : 'APM';
         insightsLink.href = `/insights?domain=${encodeURIComponent(domain)}`;
+        portfolioLink.href = `/portfolio?domain=${encodeURIComponent(domain)}`;
     }
 
     tabs.forEach(t => {
@@ -332,12 +564,19 @@
         function showName() {
             if (!input.files || input.files.length === 0) {
                 nameEl.textContent = "No file selected.";
+            } else if (input.hasAttribute("webkitdirectory")) {
+                const first = input.files[0];
+                const folder = (first.webkitRelativePath || first.name).split("/")[0];
+                nameEl.textContent = `${folder} (${input.files.length} files)`;
             } else {
                 nameEl.textContent = Array.from(input.files).map(f => f.name).join(", ");
             }
         }
         browse?.addEventListener('click', () => input.click());
-        input.addEventListener('change', showName);
+        input.addEventListener('change', () => {
+            showName();
+            if (id === "progression_folder") updateProgressionPreview(input);
+        });
 
         // Drag & drop
         ["dragenter","dragover"].forEach(evt =>
@@ -354,7 +593,361 @@
         });
     }
 
-    ["previous_file","current_file","previous_brum","current_brum","previous_mrum","current_mrum"].forEach(wireFile);
+    ["previous_file","current_file","previous_brum","current_brum","previous_mrum","current_mrum","previous_folder","current_folder","progression_folder"].forEach(wireFile);
+
+    document.querySelector('form[action="/upload_progression_folders"]')?.addEventListener("submit", event => {
+        syncProgressionSelection();
+        const baseline = document.getElementById("progression_baseline_group")?.value || "";
+        const selected = (document.getElementById("progression_selected_groups")?.value || "")
+            .split("||")
+            .filter(Boolean);
+        if (!baseline) {
+            event.preventDefault();
+            alert("Select the baseline group before running progression compare.");
+            return;
+        }
+        if (selected.length < 1) {
+            event.preventDefault();
+            alert("Select a baseline and at least one comparison group before running progression compare.");
+        }
+    });
+
+    function relParts(path) {
+        return (path || "").split(/[\\/]+/).filter(Boolean);
+    }
+
+    function detectDate(value) {
+        const text = value || "";
+        let match = text.match(/(20\d{2})[-_ .]?([01]\d)[-_ .]?([0-3]\d)/);
+        if (match) return `${match[1]}${match[2]}${match[3]}`;
+        match = text.match(/\b(20\d{6})\b/);
+        if (match) return match[1];
+        match = text.match(/\b([01]?\d)[-_ .]([0-3]?\d)[-_ .](\d{2})\b/);
+        if (match) {
+            const month = Number(match[1]);
+            const day = Number(match[2]);
+            const year = 2000 + Number(match[3]);
+            if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                return `${year}${String(month).padStart(2, "0")}${String(day).padStart(2, "0")}`;
+            }
+        }
+        const months = { jan:"01", feb:"02", mar:"03", apr:"04", may:"05", jun:"06", jul:"07", aug:"08", sep:"09", sept:"09", oct:"10", nov:"11", dec:"12" };
+        match = text.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[-_ .]?(\d{2,4})\b/i);
+        if (match) {
+            const key = match[1].toLowerCase().slice(0, 3);
+            const yearText = match[2];
+            const year = yearText.length === 4 ? Number(yearText) : 2000 + Number(yearText);
+            return `${year}${months[key]}01`;
+        }
+        return "";
+    }
+
+    function modifiedDate(file) {
+        if (!file || !file.lastModified) return "";
+        const d = new Date(file.lastModified);
+        if (Number.isNaN(d.getTime())) return "";
+        return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    function formatProgressionDate(value) {
+        const raw = String(value || "");
+        const match = raw.match(/^(\d{4})(\d{2})(\d{2})$/);
+        if (!match) return raw || "Unknown";
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        const date = new Date(Date.UTC(year, month - 1, day));
+        if (
+            Number.isNaN(date.getTime()) ||
+            date.getUTCFullYear() !== year ||
+            date.getUTCMonth() !== month - 1 ||
+            date.getUTCDate() !== day
+        ) {
+            return raw;
+        }
+        return date.toLocaleDateString(undefined, {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            timeZone: "UTC",
+        });
+    }
+
+    function progressionDateDetail(group) {
+        const raw = String(group.date || "");
+        const source = group.dateSource || "unknown";
+        if (/^\d{8}$/.test(raw)) {
+            return `${raw} · ${source}`;
+        }
+        return source;
+    }
+
+    function firstFallbackDate(paths, fileDateMap) {
+        return paths.map(path => fileDateMap.get(path)).filter(Boolean).sort()[0] || "";
+    }
+
+    function syncProgressionSelection() {
+        const selectedHidden = document.getElementById("progression_selected_groups");
+        const baselineHidden = document.getElementById("progression_baseline_group");
+        if (!selectedHidden || !baselineHidden) return;
+        const baseline = document.querySelector("[data-progression-baseline]:checked")?.dataset.progressionBaseline || "";
+        const selected = Array.from(document.querySelectorAll("[data-progression-compare]:checked"))
+            .map(input => input.dataset.progressionCompare)
+            .filter(name => name && name !== baseline);
+        selectedHidden.value = selected.join("||");
+        baselineHidden.value = baseline;
+    }
+
+    function handleBaselineChange(event) {
+        const baseline = event.target?.dataset?.progressionBaseline || "";
+        document.querySelectorAll("[data-progression-compare]").forEach(input => {
+            if (input.dataset.progressionCompare === baseline) {
+                input.checked = false;
+                input.disabled = true;
+            } else {
+                input.disabled = false;
+            }
+        });
+        syncProgressionSelection();
+    }
+
+    function progressionGroupHelp(group) {
+        if (!group.domains.length) return "Excluded: no APM, BRUM, or MRUM MaturityAssessment files found.";
+        return "Select as baseline if this is the earliest assessment, or compare against the chosen baseline.";
+    }
+
+    function selectedBaselineName() {
+        return document.querySelector("[data-progression-baseline]:checked")?.dataset.progressionBaseline || "";
+    }
+
+    function escapeAttr(value) {
+        return String(value || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+    }
+
+    function escapeHtml(value) {
+        return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function controllerStatusText(group) {
+        if (group.controller === "Mixed" && group.controllers?.length) {
+            return `Contains ${group.controllers.length} controllers. Split this folder or untick it.`;
+        }
+        if (group.controller === "Unknown" && group.domains?.length) {
+            return "Controller could not be read. The final compare will still block mismatches.";
+        }
+        if (group.controller === "Not inspected") {
+            return "No matching maturity workbooks found.";
+        }
+        return "";
+    }
+
+    function detectDomain(value) {
+        const text = (value || "").toLowerCase();
+        if (text.includes("raw")) return "";
+        if (!text.includes("maturityassessment")) return "";
+        if (text.includes("apm")) return "APM";
+        if (text.includes("brum")) return "BRUM";
+        if (text.includes("mrum")) return "MRUM";
+        return "";
+    }
+
+    function detectControllerHint(value) {
+        const parts = relParts(value);
+        const base = (parts[parts.length - 1] || value || "").replace(/\.[^.]+$/, "");
+        const stop = new Set(["apm","brum","mrum","raw","maturityassessment","maturity","assessment","controller","config","configuration","export","report"]);
+        return base
+            .split(/[^A-Za-z0-9.]+/)
+            .filter(token => token && !stop.has(token.toLowerCase()) && !detectDate(token))
+            .slice(0, 3)
+            .join("_");
+    }
+
+    function groupProgressionFiles(files) {
+        const list = Array.from(files || []).filter(file => {
+            const path = file.webkitRelativePath || file.name;
+            const parts = relParts(path);
+            const base = parts[parts.length - 1] || "";
+            return base && !base.startsWith(".") && !["thumbs.db", "desktop.ini"].includes(base.toLowerCase());
+        });
+        const paths = list.map(file => file.webkitRelativePath || file.name);
+        const split = paths.map(relParts);
+        const roots = split.map(parts => parts[0]).filter(Boolean);
+        const commonRoot = roots.length && new Set(roots).size === 1;
+        const hasChildFolders = commonRoot && split.some(parts => parts.length > 2);
+        const groups = new Map();
+
+        if (hasChildFolders) {
+            list.forEach(file => {
+                const path = file.webkitRelativePath || file.name;
+                const parts = relParts(path);
+                if (parts.length < 3) return;
+                const group = parts[1];
+                if (!groups.has(group)) groups.set(group, []);
+                groups.get(group).push(path);
+            });
+            if (groups.size >= 2) return groups;
+            groups.clear();
+        }
+
+        list.forEach(file => {
+            const path = file.webkitRelativePath || file.name;
+            const date = detectDate(path);
+            if (!date) return;
+            const hint = detectControllerHint(path);
+            const group = `${hint} ${date}`.trim();
+            if (!groups.has(group)) groups.set(group, []);
+            groups.get(group).push(path);
+        });
+        return groups;
+    }
+
+    async function updateProgressionPreview(inputOrFiles) {
+        const files = inputOrFiles?.files || inputOrFiles;
+        if (inputOrFiles?.files?.length) {
+            const formData = new FormData();
+            Array.from(inputOrFiles.files).forEach(file => {
+                const path = file.webkitRelativePath || file.name;
+                formData.append("progression_folder", file, path);
+                formData.append("progression_file_modified", `${path}||${modifiedDate(file)}`);
+            });
+            try {
+                const response = await fetch("/api/progression_preview", { method: "POST", body: formData });
+                const data = await response.json();
+                renderProgressionPreview(data.groups || [], data.warnings || []);
+                return;
+            } catch (error) {
+                console.warn("Server progression preview failed, using browser preview:", error);
+            }
+        }
+        updateProgressionPreviewClient(files);
+    }
+
+    function updateProgressionPreviewClient(files) {
+        const preview = document.getElementById("progressionPreview");
+        if (!preview) return;
+
+        const fileDateMap = new Map(
+            Array.from(files || []).map(file => [file.webkitRelativePath || file.name, modifiedDate(file)])
+        );
+        const groups = Array.from(groupProgressionFiles(files).entries())
+            .map(([name, paths]) => {
+                const domains = Array.from(new Set(paths.map(detectDomain).filter(Boolean))).sort();
+                const explicitDate = detectDate([name].concat(paths).join(" "));
+                const fallbackDate = firstFallbackDate(paths, fileDateMap);
+                const date = explicitDate || fallbackDate || "Unknown";
+                const dateSource = explicitDate ? "folder/filename" : fallbackDate ? "file modified" : "unknown";
+                const controllerHints = Array.from(new Set(paths.map(detectControllerHint).filter(Boolean))).slice(0, 4);
+                return { name, paths, domains, date, dateSource, controllerHints };
+            })
+            .sort((a, b) => (a.date || "99999999").localeCompare(b.date || "99999999") || a.name.localeCompare(b.name));
+
+        if (!files || !files.length) {
+            preview.classList.remove("active");
+            preview.innerHTML = "";
+            syncProgressionSelection();
+            return;
+        }
+
+        if (groups.length < 2) {
+            preview.classList.add("active");
+            preview.innerHTML = `<div class="preview-warning">Could not find at least two dated assessment groups. Use dated subfolders or include dates like 20250108 in filenames.</div>`;
+            syncProgressionSelection();
+            return;
+        }
+
+        const warnings = [];
+        if (new Set(groups.map(group => group.date)).size !== groups.length) {
+            warnings.push("Multiple groups share the same detected date. Check for mixed controllers or duplicate exports.");
+        }
+        const hintSets = groups.map(group => group.controllerHints.join("|")).filter(Boolean);
+        if (new Set(hintSets).size > 1) {
+            warnings.push("Different controller hints were found in filenames. The workbook controller check will block mismatched comparisons.");
+        }
+        renderProgressionPreview(
+            groups.map((group, index) => ({
+                ...group,
+                role: "Select",
+                includeDefault: group.domains.length > 0,
+                baselineDefault: false,
+                controller: "Preview pending",
+                reason: progressionGroupHelp(group),
+            })),
+            warnings
+        );
+    }
+
+    function renderProgressionPreview(groups, warnings = []) {
+        const preview = document.getElementById("progressionPreview");
+        if (!preview) return;
+
+        if (!groups.length) {
+            preview.classList.add("active");
+            preview.innerHTML = `<div class="preview-warning">Could not find at least two dated assessment groups. Use dated subfolders or include dates like 20250108 in filenames.</div>`;
+            syncProgressionSelection();
+            return;
+        }
+
+        const rows = groups.map((group) => {
+            const name = escapeHtml(group.name);
+            const attrName = escapeAttr(group.name);
+            const canCompare = Boolean(group.domains?.length);
+            const groupNote = group.nestedFolderMessage
+                ? `<br><span class="note">${escapeHtml(group.nestedFolderMessage)}</span>`
+                : "";
+            const domains = canCompare ? group.domains.map(escapeHtml).join(", ") : "No matching domain files";
+            const hints = group.controllerHints?.length
+                ? `<br><span class="note">Hint: ${group.controllerHints.map(escapeHtml).join(", ")}</span>`
+                : "";
+            const status = controllerStatusText(group);
+            const statusText = status ? `<br><span class="note">${escapeHtml(status)}</span>` : "";
+            return `
+            <tr>
+                <td>
+                    <label class="check" style="padding:6px 8px;">
+                        <input type="radio" name="progression_baseline_choice" data-progression-baseline="${attrName}" ${group.baselineDefault ? "checked" : ""} ${canCompare ? "" : "disabled"} />
+                        Baseline
+                    </label>
+                    <label class="check" style="padding:6px 8px;margin-top:6px;">
+                        <input type="checkbox" data-progression-compare="${attrName}" ${group.includeDefault && canCompare ? "checked" : ""} ${canCompare ? "" : "disabled"} />
+                        Compare
+                    </label>
+                    <div class="note">${escapeHtml(group.reason || progressionGroupHelp(group))}</div>
+                </td>
+                <td>${name}${groupNote}</td>
+                <td>${escapeHtml(formatProgressionDate(group.date))}<br><span class="note">${escapeHtml(progressionDateDetail(group))}</span></td>
+                <td>${domains}</td>
+                <td>${escapeHtml(group.controller || "Unknown")}${hints}${statusText}</td>
+            </tr>
+        `}).join("");
+        const guidanceItems = [
+            "Choose the baseline row yourself, normally the earliest assessment for the same controller. Then tick only the later assessments you want compared.",
+            ...warnings,
+        ];
+        const guidance = `<ul>${guidanceItems.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+
+        preview.classList.add("active");
+        preview.innerHTML = `
+            <table>
+                <thead><tr><th>Use</th><th>Detected Group</th><th>Date</th><th>Domains</th><th>Controller</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+            <div class="preview-warning">${guidance}</div>
+        `;
+        preview.querySelectorAll("[data-progression-baseline]").forEach(input => {
+            input.addEventListener("change", handleBaselineChange);
+        });
+        preview.querySelectorAll("[data-progression-compare]").forEach(input => {
+            input.addEventListener("change", syncProgressionSelection);
+        });
+        const selected = selectedBaselineName();
+        if (selected) {
+            document.querySelectorAll("[data-progression-compare]").forEach(input => {
+                input.disabled = input.dataset.progressionCompare === selected;
+                if (input.disabled) input.checked = false;
+            });
+        }
+        syncProgressionSelection();
+    }
 
     // Initial set of the Insights link
     updateInsightsHref();

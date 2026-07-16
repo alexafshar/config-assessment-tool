@@ -15,6 +15,7 @@ Key Features:
 # compare_tool/summary.py
 
 import logging
+import re
 from typing import Any
 from copy import copy
 from openpyxl.styles import PatternFill
@@ -32,38 +33,133 @@ from .excel_io import get_key_column  # if used
 logger = logging.getLogger(__name__)
 
 
+def _build_summary_formula_context(wb_formula, wb_values):
+    context = {
+        "overall_counts": {},
+        "analysis_col_c_count": 0,
+    }
+
+    if "Analysis" not in wb_values.sheetnames:
+        return context
+
+    ws = wb_values["Analysis"]
+    headers = {
+        str(cell.value or "").strip(): cell.column
+        for cell in next(ws.iter_rows(min_row=1, max_row=1), [])
+    }
+
+    overall_col = headers.get("OverallAssessment")
+    if overall_col:
+        counts = {}
+        for row in ws.iter_rows(min_row=2, min_col=overall_col, max_col=overall_col):
+            value = row[0].value
+            if value is None:
+                continue
+            key = str(value).strip().lower()
+            if key:
+                counts[key] = counts.get(key, 0) + 1
+        context["overall_counts"] = counts
+
+    col_c_values = [
+        cell.value
+        for row in ws.iter_rows(min_row=2, min_col=3, max_col=3)
+        for cell in row
+        if cell.value not in (None, "")
+    ]
+    context["analysis_col_c_count"] = len(col_c_values)
+    return context
+
+
+def _summary_formula_value(ws_output, ws_formula, cell, context):
+    formula = str(cell.value or "")
+    formula_upper = formula.upper()
+
+    if "COUNTIF(" in formula_upper and "OVERALLASSESSMENT" in formula_upper:
+        header = ws_formula.cell(row=1, column=cell.column).value
+        return context["overall_counts"].get(str(header or "").strip().lower(), 0)
+
+    if formula_upper.startswith("=ROUND(") and "COUNTA(ANALYSIS!" in formula_upper:
+        match = re.search(r"=ROUND\(([A-Z]+)(\d+)/", formula_upper)
+        if not match:
+            return None
+        count_cell = f"{match.group(1)}{match.group(2)}"
+        count_value = ws_output[count_cell].value or 0
+        app_count = context["analysis_col_c_count"]
+        if not app_count:
+            return 0
+        return round((float(count_value) / app_count) * 100, 1)
+
+    return None
+
+
+def _summary_values_workbook(source_file_path):
+    wb_formula = load_workbook(source_file_path, data_only=False)
+    wb_values = load_workbook(source_file_path, data_only=True)
+    try:
+        if "Summary" not in wb_formula.sheetnames or "Summary" not in wb_values.sheetnames:
+            logging.error("'Summary' sheet is missing in %s.", source_file_path)
+            return None
+
+        ws_formula = wb_formula["Summary"]
+        ws_values = wb_values["Summary"]
+        context = _build_summary_formula_context(wb_formula, wb_values)
+
+        wb_output = openpyxl.Workbook()
+        ws_output = wb_output.active
+        ws_output.title = "Summary"
+
+        for row in ws_formula.iter_rows():
+            for cell in row:
+                value = ws_values[cell.coordinate].value
+                formula_text = cell.value
+                is_formula = cell.data_type == "f" or (
+                    isinstance(formula_text, str) and formula_text.startswith("=")
+                )
+                if is_formula and value is None:
+                    value = _summary_formula_value(ws_output, ws_formula, cell, context)
+                    if value is None:
+                        logging.warning(
+                            "Could not calculate Summary formula %s in %s: %s",
+                            cell.coordinate,
+                            source_file_path,
+                            formula_text,
+                        )
+                ws_output.cell(row=cell.row, column=cell.column, value=value)
+
+        return wb_output
+    finally:
+        wb_formula.close()
+        wb_values.close()
+
+
+def read_summary_values_df(source_file_path):
+    wb_output = _summary_values_workbook(source_file_path)
+    if wb_output is None:
+        return pd.DataFrame()
+
+    ws_output = wb_output["Summary"]
+    rows = list(ws_output.iter_rows(values_only=True))
+    if not rows:
+        return pd.DataFrame()
+
+    headers = [
+        f"Unnamed: {idx}" if value is None else value
+        for idx, value in enumerate(rows[0])
+    ]
+    return pd.DataFrame(rows[1:], columns=headers)
+
+
+def _copy_summary_values(source_file_path, output_path):
+    wb_output = _summary_values_workbook(source_file_path)
+    if wb_output is not None:
+        wb_output.save(output_path)
+
+
 # Function to create summary workbooks
 def create_summary_workbooks(previous_file_path, current_file_path, previous_sum_path, current_sum_path):
     try:
-        wb_previous = load_workbook(previous_file_path, data_only=True)
-        wb_current = load_workbook(current_file_path, data_only=True)
-
-        if 'Summary' not in wb_previous.sheetnames or 'Summary' not in wb_current.sheetnames:
-            logging.error("'Summary' sheet is missing in one of the files.")
-            return
-
-        ws_previous = wb_previous['Summary']
-        ws_current = wb_current['Summary']
-
-        # Create new workbooks for the summaries
-        wb_previous_sum = openpyxl.Workbook()
-        wb_current_sum = openpyxl.Workbook()
-
-        ws_previous_sum = wb_previous_sum.active
-        ws_current_sum = wb_current_sum.active
-
-        ws_previous_sum.title = 'Summary'
-        ws_current_sum.title = 'Summary'
-
-        # Copy data from original workbooks to summary workbooks as values only
-        for row in ws_previous.iter_rows(values_only=True):
-            ws_previous_sum.append(row)
-        for row in ws_current.iter_rows(values_only=True):
-            ws_current_sum.append(row)
-
-        # Save the cleaned-up summary workbooks
-        wb_previous_sum.save(previous_sum_path)
-        wb_current_sum.save(current_sum_path)
+        _copy_summary_values(previous_file_path, previous_sum_path)
+        _copy_summary_values(current_file_path, current_sum_path)
 
     except Exception as e:
         logging.error(f"Error in create_summary_workbooks: {e}", exc_info=True)

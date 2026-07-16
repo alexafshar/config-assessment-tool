@@ -1,218 +1,276 @@
 # CompareResults
 
-**CompareResults** is a plugin for the [Configuration Assessment Tool (CAT)](https://github.com/Appdynamics/config-assessment-tool). 
+**CompareResults** compares AppDynamics Configuration Assessment Tool (CAT) output workbooks for **APM**, **BRUM**, and **MRUM**.
 
-It compares **Previous** and **Current** CAT workbooks for **APM**, **BRUM**, and **MRUM**, providing insights into how your application instrumentation has evolved.
+It produces:
 
-## Key Features
-CompareResults generates three outputs:
-- **Excel Comparison Workbook**: A detailed, low-level comparison of the two workbooks.
-- **PowerPoint Deck**: A high-level summary of the comparison results.
-- **JSON Snapshot**: Used by the **Insights** view in the UI for further analysis.
+- **Excel comparison workbook** for detailed metric-level changes.
+- **PowerPoint summary** for client-facing maturity direction.
+- **JSON snapshot** used by the built-in **Insights** and trend views.
 
---------------------------------------------------------------------------------
+The tool is intended to be run locally from the root of this folder: `cat_compare`.
 
-## Supported Files
+---
 
-You can compare CAT workbooks with the following naming conventions:
-- `*-MaturityAssessment-apm.xlsx`
-- `*-MaturityAssessment-brum.xlsx`
-- `*-MaturityAssessment-mrum.xlsx`
+## Quick Start
 
-### Important Rules
-- Both the **Previous** and **Current** workbooks must be from the **same Controller**.
-- The **Previous** workbook should be dated earlier than the **Current** workbook (recommended).
-- Ensure you select the correct domain (APM, BRUM, or MRUM) when uploading files.
+From the `cat_compare` folder:
 
---------------------------------------------------------------------------------
+```bash
+python3 run_tool.py
+```
 
-## Requirements
+On Windows:
 
-- Python 3.x
-- Dependencies listed in `requirements.txt`
-- Microsoft Excel installed (required for formula recalculation via `xlwings`)
-  - macOS: Excel for Mac installed and can open normally
-  - Windows: Desktop Excel installed and can open normally
+```powershell
+python run_tool.py
+```
 
-Optional / Notes:
-- Internet access is only needed if your UI loads external assets (e.g., Chart.js via CDN). If you bundle assets locally, internet is not required.
+The launcher creates or reuses `.venv`, installs requirements, starts the web UI, and tries to open your browser.
 
---------------------------------------------------------------------------------
+If the browser does not open automatically, go to:
 
-## Installation
+```text
+http://127.0.0.1:5000/
+```
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Appdynamics/config-assessment-tool.git
-   cd config-assessment-tool/compare-plugin
-   ```
+Stop the server with `Ctrl + C`.
 
---------------------------------------------------------------------------------
+To check a machine before starting the app:
 
-## Quick Start (Recommended) — One-command launcher
+```bash
+python3 run_tool.py --check
+```
 
-The launcher creates a virtual environment (`.venv`), installs requirements, starts the web UI, and opens your browser.
+On Windows:
 
-macOS / Linux:
-    cd path/to/config-assessment-tool/compare-plugin
-    python3 run_tool.py
+```powershell
+python run_tool.py --check
+```
 
-Windows (PowerShell):
-    cd path\to\config-assessment-tool\compare-plugin
-    python .\run_tool.py
+This prints the detected operating system, CPU architecture, Python version, writable folder status, and whether Excel is visible to the launcher.
 
-Windows (Command Prompt):
-    cd path\to\config-assessment-tool\compare-plugin
-    python run_tool.py
+---
 
-When it starts, you should see something like:
-- Starting Config Assessment Tool on http://127.0.0.1:5000 ...
+## Supported Workbooks
 
-The UI should open automatically. If it doesn’t, open:
-- http://127.0.0.1:5000/
+The matcher expects non-raw CAT maturity assessment workbooks with filenames containing:
 
-Stop the server with:
-- macOS/Linux: Ctrl + C
-- Windows: Ctrl + C
+- `MaturityAssessment` and `apm`
+- `MaturityAssessment` and `brum`
+- `MaturityAssessment` and `mrum`
 
---------------------------------------------------------------------------------
+Examples:
 
-## One-click / Double-click launcher
+```text
+client-MaturityAssessment-apm.xlsx
+client-MaturityAssessment-brum-Mar25.xlsx
+client-MaturityAssessment-mrum-2025-05-12.xlsx
+```
 
-If you want a “double-click feel”, you can run the launcher script directly (it will create `.venv`, install requirements, start the web UI, and open your browser).
+Files with `raw` in the filename are ignored. Excel temporary lock files such as `~$client-MaturityAssessment-apm.xlsx` are also ignored.
 
-### macOS / Linux (double-click or run from Terminal)
+Both previous and current workbooks must be from the same AppDynamics controller. The tool checks this before running a comparison.
 
-**Option A — Terminal (recommended the first time):**
-1) Go to the `compare-plugin` folder:
-    cd path/to/config-assessment-tool/compare-plugin
+---
 
-2) One-time: allow the launcher to run:
-    chmod +x run_tool.py
+## UI Modes
 
-3) Run it:
-    ./run_tool.py
-   OR:
-    python3 run_tool.py
+### APM, BRUM, and MRUM
 
-**Option B — Finder double-click (works if macOS allows it):**
-- You can try double-clicking `run_tool.py`, but macOS may open it in an editor instead of running it.
-- If that happens, use Option A.
+Use these tabs when you already know the exact previous and current workbook for one domain.
 
-Notes:
-- If macOS blocks execution (Gatekeeper), right-click the file → **Open** (once), or run via Terminal.
-- You may be prompted for permissions the first time Excel automation runs.
+Upload:
 
-### Windows (double-click)
+- Previous workbook
+- Current workbook
 
-Windows will usually open `.py` files with Python if Python is installed and associated with `.py`.
+Then run the compare for that single domain.
 
-**Option A — Double-click**
-- Double-click `run_tool.py` inside `compare-plugin`.
+### Folder Compare
 
-**Option B — Right-click**
-- Right-click `run_tool.py` → **Open with** → **Python** (or “Python Launcher”).
+Use **Folder Compare** when you want one previous-vs-current comparison across one or more domains.
 
-If double-click does nothing, use PowerShell:
-    cd path\to\config-assessment-tool\compare-plugin
-    python .\run_tool.py
+Best when:
 
---------------------------------------------------------------------------------
+- You have exactly one previous assessment folder.
+- You have exactly one current assessment folder.
+- Each folder contains the relevant APM, BRUM, and/or MRUM maturity workbooks.
 
+The tool picks the matching domain files and generates comparison outputs.
 
-## Using the UI
+### Progression
 
-1) Open the UI:
-- http://127.0.0.1:5000/
+Use **Progression** when you have two or more assessments and want to see trends for AppDynamics configuration maturity.
 
-2) Select the domain:
-- APM, BRUM, or MRUM
+Progression uses a fixed baseline:
 
-3) Upload:
-- Previous CAT workbook (older)
-- Current CAT workbook (newer)
+```text
+Baseline assessment -> later assessment 1
+Baseline assessment -> later assessment 2
+Baseline assessment -> later assessment 3
+```
 
-4) Click Upload and Compare (or the equivalent button)
+For example:
 
-You’ll then see links to download:
-- Excel comparison workbook
-- PowerPoint deck
-- JSON snapshot (used by Insights)
+```text
+Jan -> Mar
+Jan -> May
+Jan -> Jun
+```
 
---------------------------------------------------------------------------------
+The generated JSON snapshots feed the Insights trend views.
+
+---
+
+## Recommended Progression Setup
+
+Use one controller per progression run.
+
+If files are scattered across Downloads, Desktop, email attachments, or old output folders, copy the relevant non-raw maturity workbooks into one clean staging folder first.
+
+Recommended structure:
+
+```text
+Client-Progression/
+  2025-01-08/
+    client-MaturityAssessment-apm.xlsx
+    client-MaturityAssessment-brum.xlsx
+    client-MaturityAssessment-mrum.xlsx
+  2025-03-28/
+    client-MaturityAssessment-apm.xlsx
+    client-MaturityAssessment-brum.xlsx
+    client-MaturityAssessment-mrum.xlsx
+  2025-05-12/
+    client-MaturityAssessment-apm.xlsx
+    client-MaturityAssessment-brum.xlsx
+    client-MaturityAssessment-mrum.xlsx
+```
+
+Also supported:
+
+```text
+Client-Progression/
+  client-MaturityAssessment-apm-Jan25.xlsx
+  client-MaturityAssessment-brum-Jan25.xlsx
+  client-MaturityAssessment-mrum-Jan25.xlsx
+  client-MaturityAssessment-apm-Mar25.xlsx
+  client-MaturityAssessment-brum-Mar25.xlsx
+  client-MaturityAssessment-mrum-Mar25.xlsx
+  client-MaturityAssessment-apm-May25.xlsx
+  client-MaturityAssessment-brum-May25.xlsx
+  client-MaturityAssessment-mrum-May25.xlsx
+```
+
+The folder and file names above are examples. The important filename rules are:
+
+- Include `MaturityAssessment`.
+- Include `apm`, `brum`, or `mrum`.
+- Avoid `raw`.
+- Avoid mixing controllers in the same assessment group.
+
+If the UI reports nested folders, browse one level deeper and select the folder that directly contains the assessment folders or workbooks.
+
+---
 
 ## Outputs
 
-Outputs are written to the results/output folder configured by the app (commonly `compare-plugin/results/`).
+Outputs are written to the configured `results/` folder.
 
-Typical filenames:
-- `Analysis_Summary_APM.xlsx` and `Analysis_Summary_APM.pptx`
-- `Analysis_Summary_BRUM.xlsx` and `Analysis_Summary_BRUM.pptx`
-- `Analysis_Summary_MRUM.xlsx` and `Analysis_Summary_MRUM.pptx`
+Typical outputs:
+
+- `Analysis_Summary_APM.xlsx`
+- `Analysis_Summary_APM.pptx`
+- `Analysis_Summary_BRUM.xlsx`
+- `Analysis_Summary_BRUM.pptx`
+- `Analysis_Summary_MRUM.xlsx`
+- `Analysis_Summary_MRUM.pptx`
 - `analysis_summary_<domain>_<timestamp>.json`
 
-What each output is for:
-- Excel: deep-dive comparison (per sheet / per metric)
-- PowerPoint: leadership summary + key callouts + deep-dive slides
-- JSON: powers the UI “Insights” view (per-app drilldown)
+Progression comparisons also save stable `Progression_<DOMAIN>_...` output files so multiple runs do not overwrite each other.
 
---------------------------------------------------------------------------------
+---
+
+## Insights
+
+Open **Insights** from the UI after a comparison.
+
+Insights uses generated JSON snapshots to show:
+
+- Per-application improvements and degraded areas.
+- Fixed-baseline maturity trends.
+- Portfolio-style selected application summaries.
+
+For progression trends, select a snapshot for the controller and the tool will use related snapshots for that controller where possible.
+
+---
+
+## Configuration
+
+Excel recalculation is controlled by `config.json`:
+
+```json
+{
+  "excel_recalculation_mode": "auto"
+}
+```
+
+Modes:
+
+- `auto`: use cached Summary values where possible; calculate supported Summary formulas in Python; fall back to Excel automation when needed.
+- `always`: always use Excel automation. This is the rollback mode for maximum compatibility.
+- `never`: never use Excel automation. Useful for diagnostics.
+
+Microsoft Excel may still be required for workbooks that do not contain usable cached formula values and cannot be calculated by the Python fallback.
+
+---
 
 ## Troubleshooting
 
-1) “UI opens but Insights is blank / missing comparisons”
-- Ensure the comparison workbook has an Analysis sheet with a `name` column.
-- Ensure domain columns include strings like “Upgraded” / “Downgraded” (Insights detects these).
-- Ensure the JSON is being generated and saved into the configured results folder.
+### The app does not start
 
-2) ModuleNotFoundError: No module named 'compare_tool'
-This usually means you ran a file directly instead of running from the plugin root.
-- Always run from the `compare-plugin` folder using:
-    python3 run_tool.py
-  Or on Windows:
-    python run_tool.py
+Run from the `cat_compare` folder:
 
-If you are intentionally running the Flask app as a module, do it from the plugin root:
-    python -m webapp.app
+```bash
+python3 run_tool.py
+```
 
-3) can't open file ... app.py: [Errno 2]
-Your `app.py` lives under `webapp/`. Don’t run `python app.py` from the repo root.
-Use:
-    python -m webapp.app
-or (recommended):
-    python run_tool.py
+Do not run `python app.py` from the folder root. If running Flask directly, use:
 
-4) Import "compare_tool.logging_config" could not be resolved
-This is an editor/Pylance warning if you removed/renamed the file but still import it.
-Fix by either:
-- removing the import where it’s referenced, OR
-- restoring the file if you still want centralized logging setup
+```bash
+python -m webapp.app
+```
 
-5) threading is not defined
-Add the missing import at the top of the file that uses it:
-    import threading
+### ModuleNotFoundError: No module named `compare_tool`
 
-6) Excel / xlwings issues
-Because the tool may open Excel to recalc formulas:
-- Make sure Excel is installed and opens normally
-- Close any “blocked” Excel dialogs (first-run prompts, file recovery, etc.)
-- On macOS, Excel automation may require permissions the first time
+You are probably not running from the `cat_compare` folder. Change into this folder and run the launcher again.
 
-7) Controller mismatch
-If Previous + Current are from different Controllers, the tool will stop.
-Re-run with two workbooks from the same Controller.
+### Controller mismatch
 
---------------------------------------------------------------------------------
+Previous and current workbooks must come from the same AppDynamics controller. Re-run with matching controller exports.
 
-## Support / Notes
+### Progression preview shows Mixed
 
-- This tool compares CAT outputs and generates a “what changed” story between two points in time.
-- For best results:
-  - Keep CAT outputs named consistently
-  - Run CAT with the same settings on both runs
-  - Use a meaningful time gap between Previous and Current
-- If you hit an issue, capture:
-  - terminal logs
-  - the two input workbook filenames
-  - the generated comparison workbook (if it exists)
-  and open a GitHub issue / share with the maintainer.
+The selected group contains workbooks from more than one controller. Split the files by controller or untick that group.
+
+### Progression preview says nested folders detected
+
+Browse one level deeper and select the folder containing the assessment folders or workbooks.
+
+### Insights is blank
+
+Confirm that:
+
+- A JSON snapshot was generated.
+- The comparison workbook contains an `Analysis` sheet.
+- The selected domain and controller match the snapshot you want to inspect.
+
+---
+
+## Best Practices
+
+- Keep one controller per comparison or progression run.
+- Use meaningful assessment spacing, such as monthly or quarterly exports.
+- Keep non-raw maturity workbooks only in progression staging folders.
+- Close Excel popups or first-run prompts before running comparisons that require Excel automation.
+- Keep generated outputs from important client runs in a known location outside temporary downloads.

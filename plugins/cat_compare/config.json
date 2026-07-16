@@ -3,6 +3,7 @@
     "result_folder": "results",
     "previous_file": "previous.xlsx",
     "current_file": "current.xlsx",
+    "excel_recalculation_mode": "auto",
     "output_file": "comparison_result.xlsx",
     "previous_sum_file": "previous_sum.xlsx",
     "current_sum_file": "current_sum.xlsx",
@@ -12,4 +13,3 @@
     "brum_template_file": "template_brum.pptx",
     "mrum_template_file": "template_mrum.pptx"
   }
-  

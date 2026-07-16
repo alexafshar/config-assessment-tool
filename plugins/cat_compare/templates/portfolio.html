@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Portfolio View</title>
+  <style>
+    :root {
+      --bg:#0b0f16;
+      --panel:#121a24;
+      --field:#0f1620;
+      --text:#e8eef7;
+      --muted:#9fb3c8;
+      --border:rgba(255,255,255,0.12);
+      --accent:#00bceb;
+      --green:#35c56d;
+      --red:#d00000;
+      --yellow:#f1c40f;
+      --grey:#708294;
+      --ink:#17202a;
+      --paper:#f6f8fb;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+    .wrap { max-width:1280px; margin:24px auto; padding:0 16px 36px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+    a { color:var(--accent); }
+    h1 { margin:0; font-size:28px; }
+    h2 { margin:0 0 10px; font-size:18px; }
+    .subtitle { margin:6px 0 0; color:var(--muted); }
+    .layout { display:grid; grid-template-columns:minmax(320px,380px) 1fr; gap:14px; align-items:start; }
+    .card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px; }
+    label { display:block; color:var(--muted); font-size:13px; margin:10px 0 6px; }
+    select, input[type="search"] { width:100%; padding:9px; border-radius:8px; background:var(--field); color:var(--text); border:1px solid var(--border); }
+    .grid-2 { display:grid; grid-template-columns:1fr 140px; gap:8px; align-items:end; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+    .btn { border:1px solid var(--border); background:var(--field); color:var(--text); border-radius:8px; padding:9px 11px; cursor:pointer; }
+    .btn.primary { background:linear-gradient(135deg, var(--accent), #0aa2c7); color:#071016; border:0; font-weight:700; }
+    .small { color:var(--muted); font-size:12px; margin-top:8px; }
+    .info { color:var(--text); font-size:13px; margin-top:10px; line-height:1.35; }
+    .app-list { max-height:420px; overflow:auto; border:1px solid var(--border); border-radius:10px; margin-top:10px; }
+    .app-row { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; padding:9px 10px; border-bottom:1px solid rgba(255,255,255,0.08); }
+    .app-row:last-child { border-bottom:0; }
+    .app-name { font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .mini { color:var(--muted); font-size:12px; white-space:nowrap; }
+    .dot { width:14px; height:14px; border-radius:50%; display:inline-block; border:2px solid rgba(255,255,255,0.42); }
+    .dot.improved { background:var(--green); }
+    .dot.degraded { background:var(--red); }
+    .dot.declined { background:var(--red); }
+    .dot.mixed { background:var(--yellow); }
+    .dot.no-change { background:var(--grey); }
+    .summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:12px 0 14px; }
+    .stat { background:var(--field); border:1px solid var(--border); border-radius:10px; padding:12px; }
+    .stat-value { font-size:24px; font-weight:800; }
+    .stat-label { color:var(--muted); font-size:12px; margin-top:3px; }
+    .board { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:10px; }
+    .tile { min-height:126px; display:flex; flex-direction:column; justify-content:space-between; background:var(--field); border:1px solid var(--border); border-radius:8px; padding:12px; }
+    .tile:focus-within { outline:2px solid rgba(0,188,235,0.45); outline-offset:2px; }
+    .tile.improved { border-color:rgba(53,197,109,0.48); }
+    .tile.degraded, .tile.declined { border-color:rgba(208,0,0,0.58); }
+    .tile.mixed { border-color:rgba(241,196,15,0.58); }
+    .tile.no-change { border-color:rgba(112,130,148,0.58); }
+    .tile-head { display:flex; align-items:center; gap:8px; }
+    .tile-name { font-size:13px; line-height:1.25; overflow-wrap:anywhere; }
+    .tile-status { color:var(--muted); font-size:12px; margin-top:5px; }
+    .entity-list { margin-top:8px; display:grid; gap:6px; }
+    .entity-group { border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:7px; }
+    .entity-title { color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; margin-bottom:4px; }
+    .entity-items { color:var(--text); font-size:11px; line-height:1.35; overflow-wrap:anywhere; }
+    .tile-actions { display:flex; justify-content:flex-end; margin-top:10px; }
+    .link-btn { border:1px solid rgba(0,188,235,0.4); background:rgba(0,188,235,0.1); color:var(--text); border-radius:8px; padding:7px 9px; cursor:pointer; font-size:12px; }
+    .link-btn:hover { background:rgba(0,188,235,0.18); }
+    .counts { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+    .count { border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:7px; }
+    .count strong { display:block; font-size:20px; }
+    .count span { color:var(--muted); font-size:11px; }
+    .empty { color:var(--muted); padding:22px; text-align:center; border:1px dashed var(--border); border-radius:10px; }
+    @media (max-width:860px) {
+      .layout { grid-template-columns:1fr; }
+      .summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+    @media print {
+      @page { margin:0.35in; }
+      * { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+      body { background:var(--paper); color:var(--ink); }
+      .no-print { display:none !important; }
+      .wrap { max-width:none; margin:0; padding:0; }
+      .layout { display:block; }
+      .report-header {
+        margin:0 0 14px !important;
+        padding:18px 20px;
+        color:#fff;
+        background:linear-gradient(135deg,#111827 0%,#12324a 52%,#0f5132 100%);
+        border-radius:16px;
+        border:1px solid #25364a;
+      }
+      .report-header h1 { font-size:26px; letter-spacing:0; }
+      .report-header .subtitle { color:#d5e2ef; max-width:620px; font-size:12px; }
+      main.card {
+        background:#fff;
+        border:1px solid #cbd5df;
+        border-radius:16px;
+        padding:18px;
+        box-shadow:none;
+        break-inside:auto;
+      }
+      h2 { font-size:18px; }
+      .summary { grid-template-columns:repeat(4,1fr); gap:8px; margin:10px 0 12px; }
+      .stat {
+        background:linear-gradient(180deg,#ffffff,#f7fafc);
+        border:1px solid #d5dde6;
+        border-top:4px solid #00a8d7;
+        border-radius:12px;
+        padding:10px 12px;
+        min-height:74px;
+      }
+      .stat-value { font-size:24px; color:#111827; }
+      .stat-label { color:#526173; font-weight:700; text-transform:uppercase; font-size:9px; }
+      .board { grid-template-columns:repeat(4,1fr); gap:8px; }
+      .tile {
+        background:#fff;
+        border:1px solid #d3dbe4;
+        border-left-width:7px;
+        border-radius:12px;
+        min-height:118px;
+        padding:10px;
+        break-inside:avoid;
+      }
+      .tile.improved { border-left-color:#20a85a; }
+      .tile.degraded, .tile.declined { border-left-color:#c90000; }
+      .tile.mixed { border-left-color:#d0a400; }
+      .tile.no-change { border-left-color:#708294; }
+      .tile-head strong { font-size:13px; }
+      .tile-name { font-size:11px; font-weight:700; color:#111827; }
+      .tile-status { color:#526173; font-size:10px; }
+      .dot { width:11px; height:11px; border:1px solid rgba(0,0,0,0.25); }
+      .counts { gap:6px; margin-top:8px; }
+      .count { border:1px solid #e0e6ed; border-radius:8px; padding:5px 6px; background:#f8fafc; }
+      .count strong { font-size:18px; color:#111827; }
+      .count span { color:#526173; font-size:9px; text-transform:uppercase; font-weight:700; }
+      .entity-group { background:#f8fafc; border:1px solid #e0e6ed; }
+      .entity-title { color:#526173; }
+      .entity-items { color:#111827; font-size:9px; }
+      .tile-actions { display:none; }
+      .small, .subtitle, .mini { color:#526173; }
+      .empty { background:#fff; color:#526173; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar no-print">
+      <a href="/insights">&larr; Insights</a>
+      <button class="btn primary" type="button" onclick="window.print()">Export PDF</button>
+    </div>
+
+    <div class="report-header" style="margin-bottom:16px;">
+      <h1>Portfolio View</h1>
+      <p class="subtitle">Selected application movement across the chosen comparison snapshot, showing improved, degraded, mixed, and no-change outcomes.</p>
+    </div>
+
+    <div class="layout">
+      <aside class="card no-print">
+        <h2>Selection</h2>
+        <label for="domain">Domain</label>
+        <select id="domain">
+          <option value="APM">APM</option>
+          <option value="BRUM">BRUM</option>
+          <option value="MRUM">MRUM</option>
+        </select>
+
+        <div class="grid-2">
+          <div>
+            <label for="snapshotSearch">Snapshot Search</label>
+            <input id="snapshotSearch" type="search" placeholder="Controller or date"/>
+          </div>
+          <div>
+            <label for="controllerFilter">Controller</label>
+            <select id="controllerFilter"><option value="">All</option></select>
+          </div>
+        </div>
+
+        <label for="snapshot">Snapshot</label>
+        <select id="snapshot"><option value="LATEST">Latest</option></select>
+        <div id="snapshotInfo" class="info"></div>
+
+        <div class="grid-2">
+          <div>
+            <label for="appSearch">Application Search</label>
+            <input id="appSearch" type="search" placeholder="Type part of an app name"/>
+          </div>
+          <div>
+            <label for="statusFilter">Status</label>
+            <select id="statusFilter">
+              <option value="all">All</option>
+              <option value="degraded">Degraded</option>
+              <option value="mixed">Mixed</option>
+              <option value="improved">Improved</option>
+              <option value="no-change">No Change</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn" type="button" id="selectVisible">Select Visible</button>
+          <button class="btn" type="button" id="clearSelected">Clear</button>
+        </div>
+        <div id="pickerInfo" class="small"></div>
+        <div id="appList" class="app-list"></div>
+      </aside>
+
+      <main class="card">
+        <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
+          <div>
+            <h2 id="boardTitle">Selected Applications</h2>
+            <div id="boardMeta" class="small"></div>
+          </div>
+        </div>
+        <div class="summary">
+          <div class="stat"><div id="selectedCount" class="stat-value">0</div><div class="stat-label">Selected Apps</div></div>
+          <div class="stat"><div id="improvedCount" class="stat-value">0</div><div class="stat-label">Improved Entities</div></div>
+          <div class="stat"><div id="declinedCount" class="stat-value">0</div><div class="stat-label">Degraded Entities</div></div>
+          <div class="stat"><div id="netCount" class="stat-value">0</div><div class="stat-label">Net Movement</div></div>
+        </div>
+        <div id="board" class="board"></div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const domainSel = document.getElementById('domain');
+    const snapshotSearch = document.getElementById('snapshotSearch');
+    const controllerFilter = document.getElementById('controllerFilter');
+    const snapshotSel = document.getElementById('snapshot');
+    const snapshotInfo = document.getElementById('snapshotInfo');
+    const appSearch = document.getElementById('appSearch');
+    const statusFilter = document.getElementById('statusFilter');
+    const appList = document.getElementById('appList');
+    const pickerInfo = document.getElementById('pickerInfo');
+    const board = document.getElementById('board');
+    const boardMeta = document.getElementById('boardMeta');
+
+    let historyItems = [];
+    let historyIndex = {};
+    let allApps = [];
+    let selectedApps = new Set();
+
+    function storageKey() {
+      const file = snapshotSel.value !== 'LATEST' ? snapshotSel.value : 'LATEST';
+      const controller = controllerFilter.value || 'ALL';
+      return `catComparePortfolio:${domainSel.value}:${file}:${controller}`;
+    }
+    function saveSelectionState() {
+      try {
+        sessionStorage.setItem(storageKey(), JSON.stringify([...selectedApps]));
+      } catch {}
+    }
+    function restoreSelectionState() {
+      try {
+        const raw = sessionStorage.getItem(storageKey());
+        selectedApps = new Set(raw ? JSON.parse(raw) : []);
+      } catch {
+        selectedApps = new Set();
+      }
+    }
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[ch]));
+    }
+    function summarizeEntities(items) {
+      const values = Array.isArray(items) ? items.filter(Boolean) : [];
+      if (!values.length) return 'None';
+      const visible = values.slice(0, 4).map(escapeHtml).join(', ');
+      const remaining = values.length > 4 ? ` +${values.length - 4} more` : '';
+      return `${visible}${remaining}`;
+    }
+    function insightsUrl(appName) {
+      const params = new URLSearchParams({ domain: domainSel.value, app: appName });
+      if (snapshotSel.value !== 'LATEST') params.append('file', snapshotSel.value);
+      else if (controllerFilter.value) params.append('controller', controllerFilter.value);
+      return `/insights?${params.toString()}`;
+    }
+    function openInsights(appName) {
+      saveSelectionState();
+      window.location.href = insightsUrl(appName);
+    }
+
+    function humanTs(ts) {
+      const parts = (ts || '').split('_');
+      if (parts.length !== 2) return ts || '';
+      const d = parts[0], t = parts[1];
+      return `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)} ${t.slice(0,2)}:${t.slice(2,4)}:${t.slice(4,6)} UTC`;
+    }
+    function statusClass(status) {
+      const s = (status || '').toLowerCase();
+      if (s === 'improved') return 'improved';
+      if (s === 'degraded') return 'degraded';
+      if (s === 'declined') return 'declined';
+      if (s === 'mixed') return 'mixed';
+      return 'no-change';
+    }
+    function snapshotLabel(item) {
+      return `${item.controller || 'Controller'} - ${item.prev || 'Prev'} vs ${item.curr || 'Curr'} - ${humanTs(item.timestamp)}`;
+    }
+    function filteredSnapshots() {
+      const q = snapshotSearch.value.trim().toLowerCase();
+      const controller = controllerFilter.value;
+      return historyItems.filter(item => {
+        if (controller && item.controller !== controller) return false;
+        const haystack = [item.controller, item.prev, item.curr, item.timestamp, item.file].filter(Boolean).join(' ').toLowerCase();
+        return !q || haystack.includes(q);
+      });
+    }
+    function renderSnapshotOptions(preferred = '') {
+      const items = filteredSnapshots();
+      snapshotSel.innerHTML = '<option value="LATEST">Latest</option>';
+      historyIndex = {};
+      items.forEach(item => {
+        historyIndex[item.file] = item;
+        const opt = document.createElement('option');
+        opt.value = item.file;
+        opt.textContent = snapshotLabel(item);
+        snapshotSel.appendChild(opt);
+      });
+      const values = ['LATEST'].concat(items.map(item => item.file));
+      snapshotSel.value = values.includes(preferred) ? preferred : 'LATEST';
+      updateSnapshotInfo();
+    }
+    function renderControllerFilter(controllers) {
+      const previous = controllerFilter.value;
+      controllerFilter.innerHTML = '<option value="">All</option>';
+      controllers.forEach(controller => {
+        const opt = document.createElement('option');
+        opt.value = controller;
+        opt.textContent = controller;
+        controllerFilter.appendChild(opt);
+      });
+      controllerFilter.value = controllers.includes(previous) ? previous : '';
+    }
+    function updateSnapshotInfo() {
+      if (snapshotSel.value === 'LATEST') {
+        snapshotInfo.textContent = controllerFilter.value ? `Latest snapshot for ${controllerFilter.value}.` : 'Latest snapshot for the selected domain.';
+        return;
+      }
+      const item = historyIndex[snapshotSel.value];
+      snapshotInfo.textContent = item ? `${item.controller || 'Unknown'} | ${item.prev || 'Unknown'} vs ${item.curr || 'Unknown'} | generated ${humanTs(item.timestamp)}` : '';
+    }
+    function filteredApps() {
+      const q = appSearch.value.trim().toLowerCase();
+      const filter = statusFilter.value;
+      return allApps.filter(app => {
+        if (q && !app.name.toLowerCase().includes(q)) return false;
+        if (filter !== 'all' && statusClass(app.status) !== filter) return false;
+        return true;
+      });
+    }
+    function renderAppList() {
+      const apps = filteredApps();
+      appList.innerHTML = '';
+      apps.forEach(app => {
+        const row = document.createElement('label');
+        row.className = 'app-row';
+        const checked = selectedApps.has(app.name) ? 'checked' : '';
+        row.innerHTML = `
+          <input type="checkbox" value="${app.name.replace(/"/g, '&quot;')}" ${checked}/>
+          <span class="app-name"><span class="dot ${statusClass(app.status)}"></span> ${app.name}</span>
+          <span class="mini">${app.downgraded} down, ${app.upgraded} up</span>
+        `;
+        row.querySelector('input').addEventListener('change', event => {
+          if (event.target.checked) selectedApps.add(app.name);
+          else selectedApps.delete(app.name);
+          saveSelectionState();
+          renderBoard();
+          renderPickerInfo();
+        });
+        appList.appendChild(row);
+      });
+      renderPickerInfo();
+    }
+    function renderPickerInfo() {
+      pickerInfo.textContent = `${filteredApps().length} of ${allApps.length} applications shown. ${selectedApps.size} selected.`;
+    }
+    function renderBoard() {
+      const selected = allApps.filter(app => selectedApps.has(app.name));
+      const improved = selected.reduce((sum, app) => sum + Number(app.upgraded || 0), 0);
+      const degraded = selected.reduce((sum, app) => sum + Number(app.downgraded || 0), 0);
+      document.getElementById('selectedCount').textContent = selected.length;
+      document.getElementById('improvedCount').textContent = improved;
+      document.getElementById('declinedCount').textContent = degraded;
+      document.getElementById('netCount').textContent = improved - degraded;
+
+      const item = snapshotSel.value !== 'LATEST' ? historyIndex[snapshotSel.value] : null;
+      const controller = item?.controller || controllerFilter.value || '';
+      const compared = item ? `${item.prev || 'Previous'} vs ${item.curr || 'Current'}` : 'Latest snapshot';
+      boardMeta.textContent = `${domainSel.value}${controller ? ' | ' + controller : ''} | ${compared}`;
+
+      board.innerHTML = '';
+      if (!selected.length) {
+        board.innerHTML = '<div class="empty">Select applications from the left to build the board.</div>';
+        return;
+      }
+      selected.forEach(app => {
+        const tile = document.createElement('article');
+        tile.className = `tile ${statusClass(app.status)}`;
+        tile.innerHTML = `
+          <div>
+            <div class="tile-head"><span class="dot ${statusClass(app.status)}"></span><strong>${app.status}</strong></div>
+            <div class="tile-name">${escapeHtml(app.name)}</div>
+            <div class="tile-status">${app.changed ? `${app.changed} changed entities` : 'No changed entities'}</div>
+            <div class="entity-list">
+              <div class="entity-group">
+                <div class="entity-title">Improved</div>
+                <div class="entity-items">${summarizeEntities(app.upgradedEntities)}</div>
+              </div>
+              <div class="entity-group">
+                <div class="entity-title">Degraded</div>
+                <div class="entity-items">${summarizeEntities(app.downgradedEntities)}</div>
+              </div>
+            </div>
+          </div>
+          <div class="counts">
+            <div class="count"><strong>${app.upgraded}</strong><span>Improved</span></div>
+            <div class="count"><strong>${app.downgraded}</strong><span>Degraded</span></div>
+          </div>
+          <div class="tile-actions no-print">
+            <button class="link-btn" type="button" data-open-insights="${escapeHtml(app.name)}">Open in Insights</button>
+          </div>
+        `;
+        tile.querySelector('[data-open-insights]').addEventListener('click', () => openInsights(app.name));
+        board.appendChild(tile);
+      });
+    }
+    async function loadHistory() {
+      const domain = domainSel.value.toLowerCase();
+      const resp = await fetch(`/api/history?domain=${encodeURIComponent(domain)}`);
+      const data = await resp.json();
+      historyItems = data.items || [];
+      renderControllerFilter(data.controllers || []);
+      renderSnapshotOptions(snapshotSel.value || 'LATEST');
+    }
+    async function loadPortfolio() {
+      const domain = domainSel.value;
+      const file = snapshotSel.value !== 'LATEST' ? snapshotSel.value : '';
+      const params = new URLSearchParams({ domain });
+      if (file) params.append('file', file);
+      if (!file && controllerFilter.value) params.append('controller', controllerFilter.value);
+      const resp = await fetch(`/api/portfolio?${params.toString()}`);
+      const data = await resp.json();
+      allApps = data.apps || [];
+      if (!selectedApps.size) restoreSelectionState();
+      selectedApps = new Set([...selectedApps].filter(name => allApps.some(app => app.name === name)));
+      renderAppList();
+      renderBoard();
+    }
+
+    domainSel.addEventListener('change', async () => {
+      selectedApps.clear();
+      saveSelectionState();
+      await loadHistory();
+      await loadPortfolio();
+    });
+    snapshotSearch.addEventListener('input', () => renderSnapshotOptions(snapshotSel.value));
+    controllerFilter.addEventListener('change', async () => {
+      renderSnapshotOptions(snapshotSel.value);
+      selectedApps.clear();
+      saveSelectionState();
+      await loadPortfolio();
+    });
+    snapshotSel.addEventListener('change', async () => {
+      updateSnapshotInfo();
+      selectedApps.clear();
+      saveSelectionState();
+      await loadPortfolio();
+    });
+    appSearch.addEventListener('input', renderAppList);
+    statusFilter.addEventListener('change', renderAppList);
+    document.getElementById('selectVisible').addEventListener('click', () => {
+      filteredApps().forEach(app => selectedApps.add(app.name));
+      saveSelectionState();
+      renderAppList();
+      renderBoard();
+    });
+    document.getElementById('clearSelected').addEventListener('click', () => {
+      selectedApps.clear();
+      saveSelectionState();
+      renderAppList();
+      renderBoard();
+    });
+
+    (async function init() {
+      const params = new URLSearchParams(window.location.search);
+      const domain = (params.get('domain') || '').toUpperCase();
+      const file = params.get('file') || '';
+      const controller = params.get('controller') || '';
+      if (['APM', 'BRUM', 'MRUM'].includes(domain)) domainSel.value = domain;
+      await loadHistory();
+      if (controller && Array.from(controllerFilter.options).some(opt => opt.value === controller)) {
+        controllerFilter.value = controller;
+        renderSnapshotOptions(file || snapshotSel.value || 'LATEST');
+      }
+      if (file && Array.from(snapshotSel.options).some(opt => opt.value === file)) {
+        snapshotSel.value = file;
+        updateSnapshotInfo();
+      }
+      await loadPortfolio();
+    })();
+  </script>
+</body>
+</html>

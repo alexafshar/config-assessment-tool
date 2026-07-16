@@ -14,11 +14,10 @@ Key Features:
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional
 
 import pandas as pd
 from openpyxl import load_workbook
-import xlwings as xw
 
 
 def save_workbook(filepath: str) -> None:
@@ -29,7 +28,15 @@ def save_workbook(filepath: str) -> None:
     path = Path(filepath).resolve()
     logging.info("Saving workbook via Excel: %s", path)
 
+    try:
+        import xlwings as xw
+    except ImportError as exc:
+        raise RuntimeError(
+            "xlwings is not installed, so Excel recalculation is unavailable."
+        ) from exc
+
     app = xw.App(visible=False)
+    wb = None
     try:
         wb = app.books.open(str(path))
         wb.save()
@@ -40,6 +47,93 @@ def save_workbook(filepath: str) -> None:
         except Exception:
             pass
         app.quit()
+
+
+def inspect_summary_formula_cache(filepath: str) -> Dict[str, object]:
+    """
+    Inspect whether Summary formula cells have cached values.
+
+    openpyxl cannot calculate formulas. It can only read a formula's cached
+    result if Excel or the file generator stored one in the workbook.
+    """
+    path = Path(filepath).resolve()
+    result: Dict[str, object] = {
+        "path": str(path),
+        "summary_exists": False,
+        "formula_cells": 0,
+        "missing_cached_formula_cells": 0,
+        "missing_cached_coordinates": [],
+    }
+
+    formula_wb = load_workbook(path, read_only=True, data_only=False)
+    value_wb = load_workbook(path, read_only=True, data_only=True)
+    try:
+        if "Summary" not in formula_wb.sheetnames:
+            return result
+
+        result["summary_exists"] = True
+        formula_ws = formula_wb["Summary"]
+        value_ws = value_wb["Summary"]
+        missing: List[str] = []
+
+        for row in formula_ws.iter_rows():
+            for cell in row:
+                value = cell.value
+                is_formula = cell.data_type == "f" or (
+                    isinstance(value, str) and value.startswith("=")
+                )
+                if not is_formula:
+                    continue
+
+                result["formula_cells"] = int(result["formula_cells"]) + 1
+                cached_value = value_ws[cell.coordinate].value
+                if cached_value is None:
+                    missing.append(cell.coordinate)
+
+        result["missing_cached_coordinates"] = missing
+        result["missing_cached_formula_cells"] = len(missing)
+        return result
+    finally:
+        formula_wb.close()
+        value_wb.close()
+
+
+def summary_cache_is_available(filepath: str) -> bool:
+    """
+    Return True when the Summary sheet either has no formulas or every Summary
+    formula has a cached value available to openpyxl.
+    """
+    info = inspect_summary_formula_cache(filepath)
+    return bool(info["summary_exists"]) and int(info["missing_cached_formula_cells"]) == 0
+
+
+def summary_missing_cache_is_supported(filepath: str) -> bool:
+    """
+    Return True when every missing Summary cached value is one of the simple
+    CAT Summary formulas we can calculate in Python.
+    """
+    info = inspect_summary_formula_cache(filepath)
+    if not info["summary_exists"]:
+        return False
+
+    missing_coordinates = set(info["missing_cached_coordinates"])
+    if not missing_coordinates:
+        return True
+
+    path = Path(filepath).resolve()
+    wb = load_workbook(path, read_only=True, data_only=False)
+    try:
+        ws = wb["Summary"]
+        for coordinate in missing_coordinates:
+            formula = str(ws[coordinate].value or "").upper()
+            if "COUNTIF(" in formula and "OVERALLASSESSMENT" in formula:
+                continue
+            if formula.startswith("=ROUND(") and "COUNTA(ANALYSIS!" in formula:
+                continue
+            return False
+        return True
+    finally:
+        wb.close()
 
 
 def check_controllers_match(previous_file_path: str, current_file_path: str) -> bool:
