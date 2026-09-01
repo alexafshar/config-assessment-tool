@@ -1,0 +1,31 @@
+# Build executable bundle for RHEL 9.x
+# Compatible with glibc 2.34+ (RHEL 9.8, 9.x)
+FROM redhat/ubi9:latest
+
+WORKDIR /root/config-assessment-tool
+
+# Install Python 3.12 and build dependencies
+RUN dnf install -y \
+    python3.12 \
+    python3.12-devel \
+    gcc \
+    make \
+    git \
+    zip \
+    tar \
+    gzip \
+    && dnf clean all
+
+# Set Python 3.12 as default
+RUN alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
+    alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+
+# Copy repository content
+COPY . .
+
+# Install Python dependencies and build the bundle
+RUN make install && \
+    make exec-bundle
+
+# Default command to list the bundle
+CMD ["find", "/root/config-assessment-tool/dist/", "-name", "*.tgz"]
