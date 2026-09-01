@@ -9,17 +9,18 @@ WORKDIR /root/config-assessment-tool
 RUN dnf install -y \
     python3.12 \
     python3.12-devel \
+    curl \
     gcc \
     make \
     git \
     zip \
     tar \
     gzip \
-    && dnf clean all \
-    && python3.12 -m ensurepip --upgrade
+    && dnf clean all
 
-# Set Python 3.12 as default using symlinks and verify pip works
-RUN ln -sf /usr/bin/python3.12 /usr/bin/python3 && \
+# Bootstrap pip using get-pip.py script
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12 && \
+    ln -sf /usr/bin/python3.12 /usr/bin/python3 && \
     ln -sf /usr/bin/python3.12 /usr/bin/python && \
     python3 -m pip --version
 
