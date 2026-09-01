@@ -11,17 +11,16 @@ WORKDIR /root/config-assessment-tool
 RUN dnf install -y \
     python3.12 \
     python3.12-devel \
-    curl \
     gcc \
     make \
     git \
     zip \
     tar \
     gzip \
-    && dnf clean all && echo "Build timestamp: $(date)"
+    && dnf clean all
 
-# Bootstrap pip using get-pip.py script
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12 && \
+# Bootstrap pip using ensurepip (built-in to Python 3.12)
+RUN python3.12 -m ensurepip --upgrade && \
     ln -sf /usr/bin/python3.12 /usr/bin/python3 && \
     ln -sf /usr/bin/python3.12 /usr/bin/python && \
     python3 -m pip --version
