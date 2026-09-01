@@ -17,10 +17,10 @@ RUN dnf install -y \
     && dnf clean all \
     && python3.12 -m ensurepip --upgrade
 
-# Set Python 3.12 as default and ensure pip works
-RUN alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
-    alternatives --install /usr/bin/python python /usr/bin/python3.12 1 && \
-    alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3.12 1
+# Set Python 3.12 as default using symlinks and verify pip works
+RUN ln -sf /usr/bin/python3.12 /usr/bin/python3 && \
+    ln -sf /usr/bin/python3.12 /usr/bin/python && \
+    python3 -m pip --version
 
 # Copy repository content
 COPY . .
