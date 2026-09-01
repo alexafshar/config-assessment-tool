@@ -18,7 +18,7 @@ RUN dnf install -y \
     zip \
     tar \
     gzip \
-    && dnf clean all
+    && dnf clean all && echo "Build timestamp: $(date)"
 
 # Bootstrap pip using get-pip.py script
 RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12 && \
