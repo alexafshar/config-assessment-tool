@@ -23,8 +23,8 @@ jobs:
           REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           IMAGE_TAG="ghcr.io/${REPO_OWNER}/config-assessment-tool-rhel-linux:latest"
 
-          # Build image which builds the bundle for RHEL 9.x
-          # IMPORTANT: Use the new Dockerfile for RHEL
+          # Build on a RHEL 8-compatible base so the bundle works on both
+          # RHEL 8.x and RHEL 9.x hosts.
           # Use NO_CACHE=true to avoid buildkit caching issues
           make build-image DOCKERFILE=backend/Dockerfile-rhel DOCKER_IMAGE_TAG=${IMAGE_TAG} NO_CACHE=true
           echo "finished building docker image with RHEL bundle included"
