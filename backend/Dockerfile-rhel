@@ -1,5 +1,6 @@
 # Build executable bundle for RHEL 9.x
 # Compatible with glibc 2.34+ (RHEL 9.8, 9.x)
+# Cache-bust: 2026-09-01-v2
 FROM redhat/ubi9:latest
 
 WORKDIR /root/config-assessment-tool
