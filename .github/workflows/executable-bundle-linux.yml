@@ -1,4 +1,4 @@
-name: executable-bundle-rhel
+name: executable-bundle-linux
 
 on:
   release:
@@ -16,18 +16,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies and Build Bundle (RHEL)
+      - name: Install dependencies and Build Bundle (Linux)
         id: get_bundle_name
         run: |
           # Ensure repository owner is lowercase for Docker tag
           REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          IMAGE_TAG="ghcr.io/${REPO_OWNER}/config-assessment-tool-rhel-linux:latest"
+          IMAGE_TAG="ghcr.io/${REPO_OWNER}/config-assessment-tool-build:latest"
 
           # Build on a RHEL 8-compatible base so the bundle works on both
-          # RHEL 8.x and RHEL 9.x hosts.
+          # RHEL 8.x and RHEL 9.x hosts (and Ubuntu 20+).
           # Use NO_CACHE=true to avoid buildkit caching issues
           make build-image DOCKERFILE=backend/Dockerfile-rhel DOCKER_IMAGE_TAG=${IMAGE_TAG} NO_CACHE=true
-          echo "finished building docker image with RHEL bundle included"
+          echo "finished building docker image with Linux bundle included"
           
           # Copy bundle out of built image
           # The `find` command is more robust for dynamically named files
@@ -60,7 +60,7 @@ jobs:
           echo "BUNDLE_NAME=$BUNDLE_NAME" >> $GITHUB_ENV # Set as an environment variable
           echo "bundle_name=$BUNDLE_NAME" >> $GITHUB_OUTPUT # Set as step output for clarity
 
-      - name: Release the bundle for RHEL Linux
+      - name: Release the bundle for Linux
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -71,7 +71,7 @@ jobs:
           fi
           gh release create ${{ github.ref_name }} ${{ env.BUNDLE_NAME }} --generate-notes --title "${{ github.ref_name }}" $PRERELEASE_FLAG || gh release upload ${{ github.ref_name }} ${{ env.BUNDLE_NAME }} --clobber
 
-      - name: Keep workflow artifact within the current workflow namespace (RHEL)
+      - name: Keep workflow artifact within the current workflow namespace (Linux)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BUNDLE_NAME }} # Use the exact bundle name for the artifact
