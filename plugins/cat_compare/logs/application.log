@@ -1,0 +1,11 @@
+2026-06-23 13:32:05,533 [INFO] root: Logging setup is complete.
+2026-06-23 13:32:05,549 [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-06-23 13:32:05,549 [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+2026-06-23 13:32:06,827 [INFO] werkzeug: 127.0.0.1 - - [23/Jun/2026 13:32:06] "GET / HTTP/1.1" 200 -
+2026-06-23 13:32:07,129 [INFO] werkzeug: 127.0.0.1 - - [23/Jun/2026 13:32:07] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2026-06-23 13:34:07,492 [INFO] root: Saving workbook via Excel: /Users/aleafsha/projects/ad/cat181-fork/plugins/cat_compare/uploads/previous_apm.xlsx
+2026-06-23 13:35:28,872 [INFO] werkzeug: 127.0.0.1 - - [23/Jun/2026 13:35:28] "GET /insights?domain=APM HTTP/1.1" 200 -
+2026-06-23 13:35:28,911 [INFO] werkzeug: 127.0.0.1 - - [23/Jun/2026 13:35:28] "GET /static/js/trends.js HTTP/1.1" 200 -
+2026-06-23 13:35:28,988 [INFO] werkzeug: 127.0.0.1 - - [23/Jun/2026 13:35:28] "GET /api/history?domain=apm HTTP/1.1" 200 -
+2026-06-23 13:35:29,019 [INFO] werkzeug: 127.0.0.1 - - [23/Jun/2026 13:35:29] "GET /api/apps?domain=apm HTTP/1.1" 200 -
