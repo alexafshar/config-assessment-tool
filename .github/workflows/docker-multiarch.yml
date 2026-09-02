@@ -161,7 +161,7 @@ jobs:
 
   # Manifest creation: This is the ONLY place where user-facing tags (v1.2.3, latest) are pushed.
   merge-manifest:
-    needs: [build-linux-multiarch, build-windows]
+    needs: [build-linux-multiarch, build-rhel-linux-multiarch, build-windows]
     if: success() && ((github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
