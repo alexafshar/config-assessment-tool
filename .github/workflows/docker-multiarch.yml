@@ -3,8 +3,8 @@ name: docker-multiarch
 on:
   push:
     tags:
+      - '[0-9]*.[0-9]*.[0-9]*'
       - 'v*.*.*'
-      - '[0-9]+.[0-9]+.[0-9]+*'
   workflow_dispatch:
 
 env:
@@ -40,7 +40,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           # Generate ONLY platform-specific tags here.
-          # We do NOT push 'latest' or the bare version 'v1.2.3' in this job.
+          # We do NOT push 'latest' or the bare version '1.2.3' in this job.
           # Those are reserved for the final merge step to avoid race conditions.
           tags: |
             type=semver,pattern={{version}},suffix=-linux
@@ -92,7 +92,6 @@ jobs:
           tags: |
             type=semver,pattern={{version}},suffix=-rhel${{ matrix.ubi_major }}-linux
             type=ref,event=branch,suffix=-rhel${{ matrix.ubi_major }}-linux
-            type=raw,value=latest-rhel${{ matrix.ubi_major }}-linux,enable=${{ github.ref_type == 'tag' }}
 
       - name: Build and push RHEL ${{ matrix.ubi_major }} Linux image
         uses: docker/build-push-action@v6
@@ -201,7 +200,7 @@ jobs:
           # In the build-windows job, we push: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}-windows
           WINDOWS_IMAGE="${IMAGE_ROOT}:${VERSION}-windows"
           
-          # Tags to generate (v1.8.1 and latest)
+          # Tags to generate (1.8.1 and latest)
           TARGET_TAG="${IMAGE_ROOT}:${VERSION}"
           LATEST_TAG="${IMAGE_ROOT}:latest"
           

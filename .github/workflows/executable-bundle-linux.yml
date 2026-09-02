@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  build-rhel-linux:
-    name: Build RHEL Linux Executable Bundle
+  build-linux:
+    name: Build Linux Executable Bundle
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -37,23 +37,13 @@ jobs:
           echo "finished copying bundle onto hosted runner at $(pwd)"
           echo "files in current directory $(ls -altr)"
           
-          # Capture the exact bundle filename
           ORIGINAL_BUNDLE_NAME=$(ls -1 *.tgz | head -n 1)
-          
-          # Inject -executable- into the filename
-          # Expecting format like config-assessment-tool-rhel-linux-1.8.2.tgz
-          # Converting to config-assessment-tool-rhel-linux-executable-1.8.2.tgz
-          
-          # Using sed to append -executable before the .tgz extension
-          NEW_BUNDLE_NAME=$(echo "$ORIGINAL_BUNDLE_NAME" | sed 's/\.tgz$/-executable.tgz/')
-          
-          # Fallback if substitution didn't happen (e.g. name format changed)
-          if [[ "$NEW_BUNDLE_NAME" == "$ORIGINAL_BUNDLE_NAME" ]]; then
-            NEW_BUNDLE_NAME="${ORIGINAL_BUNDLE_NAME%.tgz}-executable.tgz"
+          VERSION="${{ github.ref_name }}"
+          if [[ -z "$VERSION" ]]; then
+            VERSION="$(cat VERSION)"
           fi
-          
+          NEW_BUNDLE_NAME="config-assessment-tool-linux-${VERSION}-x86_64-executable.tgz"
           mv "$ORIGINAL_BUNDLE_NAME" "$NEW_BUNDLE_NAME"
-          
           echo "Renamed $ORIGINAL_BUNDLE_NAME to $NEW_BUNDLE_NAME"
           
           BUNDLE_NAME="$NEW_BUNDLE_NAME"
